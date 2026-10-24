@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Sidebar } from './components/Sidebar';
 import { BrandMark } from './components/BrandMark';
-import { NavTab, NAV_BY_ID, PRACTICE_MODES, SUB_TABS, SCHOOL } from './config/navigation';
+import { NavTab, NAV_BY_ID, PRACTICE_MODES, SUB_TABS, SCHOOL, pathForTab, resolvePath, defaultTab } from './config/navigation';
 import Overview from './components/Overview';
 import TheoryRepository from './components/TheoryRepository';
 import TopicPractice from './components/TopicPractice';
@@ -46,17 +46,50 @@ function AppContent() {
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string>('topic-dao-ham');
 
-  // Sync default tab when role changes
+  // Địa chỉ trình duyệt <-> menu đang mở.
+  // Khi đăng nhập xong: mở đúng menu theo địa chỉ (ví dụ /baihoc). Địa chỉ không hợp lệ
+  // hoặc thuộc vai trò khác thì về trang mặc định của vai trò.
+  const [routeReady, setRouteReady] = useState(false);
+
   useEffect(() => {
-    if (isTeacher) {
-      if (activeTab.startsWith('student_')) {
-        setActiveTab('teacher_overview');
-      }
-    } else {
-      if (activeTab.startsWith('teacher_')) {
-        setActiveTab('student_home');
-      }
+    if (loading) return;
+    if (!isAuthenticated) { setRouteReady(false); return; }
+    const hit = resolvePath(window.location.pathname);
+    const allowed = hit && (isTeacher ? hit.tab.startsWith('teacher_') : hit.tab.startsWith('student_'));
+    const target = allowed ? hit! : { tab: defaultTab(isTeacher), practiceMode: 'topics' as const };
+    setActiveTab(target.tab);
+    setPracticeSubMode(target.practiceMode);
+    setRouteReady(true);
+  }, [loading, isAuthenticated, isTeacher]);
+
+  // Menu đổi thì địa chỉ đổi theo (và tab trình duyệt có tên riêng)
+  useEffect(() => {
+    if (!routeReady) return;
+    const path = pathForTab(activeTab, practiceSubMode);
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
     }
+  }, [routeReady, activeTab, practiceSubMode]);
+
+  // Tên tab trình duyệt theo menu đang mở (đặt trước các lệnh return sớm để đúng quy tắc Hooks)
+  useEffect(() => {
+    const base = SCHOOL.name;
+    if (!isAuthenticated) { document.title = `Đăng nhập · ${base}`; return; }
+    const title = activeTab === 'student_practice' ? PRACTICE_MODES[practiceSubMode].title : NAV_BY_ID[activeTab].title;
+    document.title = `${title} · ${base}`;
+  }, [isAuthenticated, activeTab, practiceSubMode]);
+
+  // Nút Quay lại / Tiến tới của trình duyệt
+  useEffect(() => {
+    const onPop = () => {
+      const hit = resolvePath(window.location.pathname);
+      if (!hit) return;
+      if (isTeacher !== hit.tab.startsWith('teacher_')) return;
+      setActiveTab(hit.tab);
+      setPracticeSubMode(hit.practiceMode);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, [isTeacher]);
 
   // Handlers for cross-component direct linking

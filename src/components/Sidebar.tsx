@@ -2,7 +2,7 @@ import React from 'react';
 import { X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { NAV_ITEMS, NavTab, SCHOOL } from '../config/navigation';
+import { NAV_ITEMS, NavTab, SCHOOL, pathForTab } from '../config/navigation';
 import { BrandMark } from './BrandMark';
 
 export type { NavTab };
@@ -102,11 +102,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   const badge = badges[item.id];
                   return (
                     <li key={item.id} className="relative group">
-                      <button
-                        onClick={() => select(item.id)}
+                      <a
+                        href={pathForTab(item.id)}
+                        onClick={(e) => {
+                          // Giữ hành vi mở tab mới khi giữ Ctrl/Cmd hoặc bấm giữa
+                          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                          e.preventDefault();
+                          select(item.id);
+                        }}
                         aria-current={active ? 'page' : undefined}
                         title={collapsed ? item.label : undefined}
-                        className={`relative w-full flex items-center rounded-lg text-sm transition-colors ${
+                        className={`relative w-full flex items-center rounded-lg text-sm transition-colors no-underline ${
                           collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
                         } ${active ? 'bg-white/12 text-white font-semibold' : 'text-blue-200 hover:bg-white/6 hover:text-white'}`}
                       >
@@ -122,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </span>
                           )
                         )}
-                      </button>
+                      </a>
                       {collapsed && (
                         <div className="hidden md:group-hover:flex absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-slate-950 text-white text-xs rounded-md shadow-lg pointer-events-none whitespace-nowrap z-50">
                           {item.label}{badge !== undefined ? ` (${badge})` : ''}

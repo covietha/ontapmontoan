@@ -180,3 +180,43 @@ export const SUB_TABS: Partial<Record<NavTab, Record<string, { title: string; de
     return [tab, own];
   })
 );
+
+/**
+ * Mỗi menu có một địa chỉ riêng để mở thẳng, chia sẻ hoặc đánh dấu trang.
+ * Dùng chữ không dấu, viết liền cho dễ gõ.
+ */
+export const TAB_PATHS: Record<NavTab, string> = {
+  student_home: '/trangchuhoctap',
+  student_lessons: '/baihoc',
+  student_practice: '/luyentap',
+  student_results: '/ketqua',
+  student_mistakes: '/sotayloisai',
+  teacher_overview: '/tongquan',
+  teacher_classrooms: '/lophoc',
+  teacher_questions: '/nganhangcauhoi',
+  teacher_curriculum: '/baihocchuyende',
+  teacher_exams: '/soandethi',
+  teacher_review: '/kiemduyet',
+  teacher_results: '/ketquathi',
+  teacher_accounts: '/taikhoan',
+  teacher_admins: '/quantrigoc'
+};
+
+export const EXAM_ROOM_PATH = '/luyentap/thithu';
+
+export function pathForTab(tab: NavTab, practiceMode: 'topics' | 'exam' = 'topics'): string {
+  if (tab === 'student_practice' && practiceMode === 'exam') return EXAM_ROOM_PATH;
+  return TAB_PATHS[tab];
+}
+
+/** Đổi địa chỉ trình duyệt thành menu tương ứng; trả về null nếu địa chỉ không thuộc menu nào. */
+export function resolvePath(pathname: string): { tab: NavTab; practiceMode: 'topics' | 'exam' } | null {
+  const clean = pathname.replace(/\/+$/, '').toLowerCase() || '/';
+  if (clean === EXAM_ROOM_PATH) return { tab: 'student_practice', practiceMode: 'exam' };
+  const hit = (Object.keys(TAB_PATHS) as NavTab[]).find((t) => TAB_PATHS[t] === clean);
+  return hit ? { tab: hit, practiceMode: 'topics' } : null;
+}
+
+export function defaultTab(isTeacher: boolean): NavTab {
+  return isTeacher ? 'teacher_overview' : 'student_home';
+}
