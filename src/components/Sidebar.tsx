@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           collapsed ? (
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-blue-950" />
                           ) : (
-                            <span className="min-w-5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-semibold text-center tabular-nums">
+                            <span className="min-w-5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[13px] font-semibold text-center tabular-nums">
                               {badge}
                             </span>
                           )

@@ -259,7 +259,7 @@ export const QuestionBankManager: React.FC = () => {
         >
           <HelpCircle className="w-4 h-4" />
           <span>Chờ duyệt</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+          <span className={`px-2 py-0.5 rounded-full text-[13px] ${
             activeTab === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'
           }`}>
             {counts.pending}
@@ -276,7 +276,7 @@ export const QuestionBankManager: React.FC = () => {
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>Đã duyệt (Vào đề thi)</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+          <span className={`px-2 py-0.5 rounded-full text-[13px] ${
             activeTab === 'approved' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
           }`}>
             {counts.approved}
@@ -293,7 +293,7 @@ export const QuestionBankManager: React.FC = () => {
         >
           <XCircle className="w-4 h-4" />
           <span>Từ chối</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+          <span className={`px-2 py-0.5 rounded-full text-[13px] ${
             activeTab === 'rejected' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-800'
           }`}>
             {counts.rejected}
@@ -310,7 +310,7 @@ export const QuestionBankManager: React.FC = () => {
         >
           <Trash2 className="w-4 h-4" />
           <span>Thùng rác</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+          <span className={`px-2 py-0.5 rounded-full text-[13px] ${
             activeTab === 'trash' ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700'
           }`}>
             {counts.trash}
@@ -418,7 +418,7 @@ export const QuestionBankManager: React.FC = () => {
                     <span className="font-bold text-slate-800 text-sm">
                       #{index + 1}
                     </span>
-                    <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                    <span className="text-[13px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
                       {q.id}
                     </span>
                     <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
@@ -576,7 +576,7 @@ export const QuestionBankManager: React.FC = () => {
                             : 'bg-slate-50/70 border-slate-200 text-slate-700'
                         }`}
                       >
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[12.5px] font-bold shrink-0 ${
                           isCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
                         }`}>
                           {letters[optIdx]}

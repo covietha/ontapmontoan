@@ -463,7 +463,7 @@ export const DocxQuestionImporter: React.FC<DocxQuestionImporterProps> = ({ onCl
                                       : 'bg-slate-50 border-slate-200 text-slate-700'
                                   }`}
                                 >
-                                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0 font-bold ${
+                                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[12.5px] shrink-0 font-bold ${
                                     isCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
                                   }`}>
                                     {letters[optIdx]}

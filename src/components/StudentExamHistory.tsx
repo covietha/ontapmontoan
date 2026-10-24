@@ -104,7 +104,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 mt-2">{totalExamsTaken}</div>
-          <span className="text-[11px] text-slate-400">lượt làm bài</span>
+          <span className="text-[13px] text-slate-400">lượt làm bài</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -115,7 +115,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 mt-2">{bestScore} <span className="text-xs text-slate-400 font-normal">/ 10</span></div>
-          <span className="text-[11px] text-emerald-600 font-medium">Thành tích tốt nhất</span>
+          <span className="text-[13px] text-emerald-600 font-medium">Thành tích tốt nhất</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -126,7 +126,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
             </div>
           </div>
           <div className="text-2xl font-black text-indigo-600 mt-2">{averageScore} <span className="text-xs text-slate-400 font-normal">/ 10</span></div>
-          <span className="text-[11px] text-slate-400">trên tất cả đề thi</span>
+          <span className="text-[13px] text-slate-400">trên tất cả đề thi</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -137,7 +137,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 mt-2">{overallAccuracy}%</div>
-          <span className="text-[11px] text-slate-400">{totalCorrectQuestions}/{totalQuestionsDone} câu đúng</span>
+          <span className="text-[13px] text-slate-400">{totalCorrectQuestions}/{totalQuestionsDone} câu đúng</span>
         </div>
       </div>
 
@@ -197,7 +197,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                     <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
                       {result.examId}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       <ShieldCheck className="w-3 h-3" />
                       {result.verificationStatus === 'server_verified' ? 'Xác thực máy chủ' : 'Bản nháp dự phòng'}
                     </span>
@@ -228,7 +228,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                     <div className={`inline-block px-3 py-1 rounded-xl text-lg font-black border ${scoreBadgeColor}`}>
                       {result.score} <span className="text-xs font-semibold">/ 10</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[12.5px] text-slate-400 mt-0.5">
                       {isGood ? 'Xếp loại: Giỏi' : isAverage ? 'Xếp loại: Khá' : 'Cần cố gắng'}
                     </div>
                   </div>
@@ -255,7 +255,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-[11px] font-bold">
+                  <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-[13px] font-bold">
                     {selectedResult.examId}
                   </span>
                   <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
@@ -324,7 +324,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                             {targetQ?.code || qId}
                           </span>
                           {lesson && (
-                            <span className="text-[11px] text-slate-500">
+                            <span className="text-[13px] text-slate-500">
                               [{lesson.lessonCode}] {lesson.title}
                             </span>
                           )}
@@ -376,7 +376,7 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                       {/* Direct Link to Lesson if Incorrect */}
                       {!isCorrect && targetQ?.lessonId && (
                         <div className="mt-3 pt-2 border-t border-rose-100 flex items-center justify-between">
-                          <span className="text-[11px] text-rose-600 font-medium">
+                          <span className="text-[13px] text-rose-600 font-medium">
                             {targetQ.hintOnWrong ? `Bẫy: ${targetQ.hintOnWrong}` : 'Ôn lại lý thuyết để củng cố dạng này'}
                           </span>
                           <button

@@ -172,7 +172,7 @@ export const Overview: React.FC<OverviewProps> = ({
             className="group cursor-pointer bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-md hover:border-rose-300 transition-all relative overflow-hidden"
           >
             {uniqueMistakes > 0 && (
-              <span className="absolute top-4 right-4 bg-rose-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+              <span className="absolute top-4 right-4 bg-rose-500 text-white text-[13px] font-bold px-2 py-0.5 rounded-full">
                 {uniqueMistakes} câu chờ ôn
               </span>
             )}
@@ -253,10 +253,10 @@ export const Overview: React.FC<OverviewProps> = ({
               >
                 <div className="space-y-1 pr-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                    <span className="text-[13px] font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                       {lesson.lessonCode}
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[13px] text-slate-400">
                       {lesson.formulas.length} công thức • {lesson.commonMistakes.length} bẫy sai
                     </span>
                   </div>

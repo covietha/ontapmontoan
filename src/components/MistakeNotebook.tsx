@@ -138,7 +138,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
         <div className="flex flex-wrap items-center gap-2">
           {/* Status filter */}
-          <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+          <div className="inline-flex flex-wrap max-w-full rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
             <button
               onClick={() => setFilterStatus('all')}
               className={`px-3 py-1.5 rounded-md transition-all ${
@@ -229,7 +229,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                  <span className="text-[13px] text-slate-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     Đã thử {item.totalAttempts} lần ({item.wrongAttempts} lần sai)
                   </span>

@@ -279,7 +279,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
                   </span>
                 );
               })()}
-              <span className="text-[11px] text-slate-400 hidden sm:inline">
+              <span className="text-[13px] text-slate-400 hidden sm:inline">
                 Liên kết: <strong className="text-slate-600 font-mono">{currentQuestion.lessonCode}</strong>
               </span>
             </div>
@@ -296,7 +296,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
                   )}
                 </span>
               )}
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                 MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
               </span>
             </div>

@@ -155,17 +155,17 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white text-blue-700 border border-blue-200">
+                    <span className="text-[12.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-white text-blue-700 border border-blue-200">
                       {lesson.lessonCode}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[12.5px] text-slate-400">
                       {lesson.formulas.length} công thức
                     </span>
                   </div>
                   <h3 className="text-xs font-bold mt-1.5 line-clamp-2">
                     {lesson.title}
                   </h3>
-                  <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+                  <div className="mt-2 flex items-center gap-2 text-[13px] text-slate-500">
                     <span className="truncate">{lesson.objectives[0]}</span>
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   <span className="text-xs text-slate-500">
                     Chuyên đề: <strong className="text-slate-700">{currentTopic?.title}</strong>
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                     MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
                   </span>
                 </div>
@@ -230,7 +230,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                         <MathRenderer content={`$$${f.latex}$$`} />
                       </div>
                       {f.note && (
-                        <p className="text-[11px] text-slate-500 italic">💡 {f.note}</p>
+                        <p className="text-[13px] text-slate-500 italic">💡 {f.note}</p>
                       )}
                     </div>
                   ))}
@@ -269,7 +269,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                         ))}
                       </div>
                       {ex.note && (
-                        <p className="text-[11px] text-emerald-800 font-medium">⚠️ {ex.note}</p>
+                        <p className="text-[13px] text-emerald-800 font-medium">⚠️ {ex.note}</p>
                       )}
                     </div>
                   ))}

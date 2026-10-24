@@ -138,7 +138,7 @@ export const ProgressReport: React.FC<ProgressReportProps> = ({ onOpenLesson, on
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                  <span className="text-[12.5px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                     Chuyên đề {stat.topic.order}
                   </span>
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 mt-1">
@@ -147,7 +147,7 @@ export const ProgressReport: React.FC<ProgressReportProps> = ({ onOpenLesson, on
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-black text-blue-600">{stat.completionRate}%</div>
-                  <span className="text-[10px] text-slate-400">hoàn thành</span>
+                  <span className="text-[12.5px] text-slate-400">hoàn thành</span>
                 </div>
               </div>
 
@@ -159,7 +159,7 @@ export const ProgressReport: React.FC<ProgressReportProps> = ({ onOpenLesson, on
                     style={{ width: `${stat.completionRate}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-500 pt-0.5">
+                <div className="flex justify-between text-[13px] text-slate-500 pt-0.5">
                   <span>Đã làm đúng: {stat.masteredCount}/{stat.totalQuestions} câu</span>
                   <span>Độ chính xác: <strong>{stat.accuracy}%</strong></span>
                 </div>
@@ -251,7 +251,7 @@ export const ProgressReport: React.FC<ProgressReportProps> = ({ onOpenLesson, on
                         <div className="text-xs text-slate-800 line-clamp-2">
                           <MathRenderer content={question.prompt} inline />
                         </div>
-                        <div className="text-[11px] text-rose-700">
+                        <div className="text-[13px] text-rose-700">
                           <strong>Bẫy học sinh hay mắc:</strong> {question.hintOnWrong}
                         </div>
                       </div>
@@ -259,7 +259,7 @@ export const ProgressReport: React.FC<ProgressReportProps> = ({ onOpenLesson, on
                       <div className="flex items-center gap-4 shrink-0">
                         <div className="text-right">
                           <div className="text-lg font-black text-rose-600">{failRate}% sai</div>
-                          <span className="text-[11px] text-slate-400">({fails}/{total} lượt sai)</span>
+                          <span className="text-[13px] text-slate-400">({fails}/{total} lượt sai)</span>
                         </div>
                         <button
                           onClick={() => onOpenLesson(question.lessonId)}

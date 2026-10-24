@@ -270,25 +270,25 @@ export const AccountManagement: React.FC = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs text-slate-500 font-semibold">Tổng số tài khoản</div>
           <div className="text-2xl font-black text-slate-900 mt-2">{accounts.length}</div>
-          <span className="text-[11px] text-slate-400">do nhà trường quản lý</span>
+          <span className="text-[13px] text-slate-400">do nhà trường quản lý</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs text-slate-500 font-semibold">Tài khoản học sinh</div>
           <div className="text-2xl font-black text-blue-600 mt-2">{studentCount}</div>
-          <span className="text-[11px] text-slate-400">thuộc các lớp 12</span>
+          <span className="text-[13px] text-slate-400">thuộc các lớp 12</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs text-slate-500 font-semibold">Giáo viên Toán</div>
           <div className="text-2xl font-black text-amber-600 mt-2">{teacherCount}</div>
-          <span className="text-[11px] text-slate-400">tham gia giảng dạy</span>
+          <span className="text-[13px] text-slate-400">tham gia giảng dạy</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs text-slate-500 font-semibold">Tài khoản đang khóa</div>
           <div className="text-2xl font-black text-rose-600 mt-2">{lockedCount}</div>
-          <span className="text-[11px] text-rose-500 font-medium">tạm ngưng truy cập</span>
+          <span className="text-[13px] text-rose-500 font-medium">tạm ngưng truy cập</span>
         </div>
       </div>
 
@@ -300,7 +300,7 @@ export const AccountManagement: React.FC = () => {
               <ShieldCheck className="w-4 h-4 text-blue-600" />
               Cấu hình phân quyền cấp tài khoản học sinh:
             </h3>
-            <p className="text-[11px] text-blue-700">
+            <p className="text-[13px] text-blue-700">
               Cho phép các giáo viên bộ môn Toán trong trường được tạo danh sách tài khoản cho học sinh lớp phụ trách.
             </p>
           </div>
@@ -326,7 +326,7 @@ export const AccountManagement: React.FC = () => {
             <UserPlus className="w-4 h-4 text-blue-600" />
             Cấp tài khoản mới do nhà trường ban hành
           </h3>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[13px] text-slate-400">
             Mật khẩu được mã hóa an toàn bằng PBKDF2-SHA512
           </span>
         </div>
@@ -478,10 +478,10 @@ export const AccountManagement: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-900">
                     {account.displayName}
-                    <div className="text-[10px] text-slate-400 font-mono font-normal">{account.email}</div>
+                    <div className="text-[12.5px] text-slate-400 font-mono font-normal">{account.email}</div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                    <span className={`px-2 py-0.5 rounded-md font-bold text-[12.5px] ${
                       account.role === 'teacher' 
                         ? 'bg-amber-100 text-amber-800' 
                         : 'bg-blue-100 text-blue-800'
@@ -494,12 +494,12 @@ export const AccountManagement: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">
                     {account.status === 'locked' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
                         <Lock className="w-3 h-3" />
                         Đã khóa
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <CheckCircle2 className="w-3 h-3" />
                         Hoạt động
                       </span>
@@ -515,7 +515,7 @@ export const AccountManagement: React.FC = () => {
                           setResetModalAccount(account);
                           setResetPasswordInput('ThptMath@2026');
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors"
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[13px] transition-colors"
                         title="Đặt lại mật khẩu"
                       >
                         <Key className="w-3 h-3 inline mr-1" />
@@ -525,7 +525,7 @@ export const AccountManagement: React.FC = () => {
                       {isRootAdmin && (
                         <button
                           onClick={() => handleToggleStatus(account)}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+                          className={`px-2.5 py-1 rounded-lg font-bold text-[13px] transition-colors ${
                             account.status === 'locked'
                               ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                               : 'bg-rose-50 text-rose-700 hover:bg-rose-100'

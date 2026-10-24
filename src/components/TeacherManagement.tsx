@@ -436,7 +436,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                         {lesson.lessonCode}
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      <span className={`text-[12.5px] font-bold px-2 py-0.5 rounded ${
                         lesson.status === 'verified'
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
@@ -485,7 +485,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
                         {q.code}
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      <span className={`text-[12.5px] font-bold px-2 py-0.5 rounded ${
                         q.status === 'verified'
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
@@ -499,7 +499,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                     <div className="text-xs text-slate-800 line-clamp-2">
                       <MathRenderer content={q.prompt} inline />
                     </div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[13px] text-slate-500">
                       Đáp án đúng: <strong>{typeof q.correctOptionIndex === 'number' ? ['A', 'B', 'C', 'D'][q.correctOptionIndex] : 'Bảo mật máy chủ'}</strong> • Mức độ: {q.difficulty}
                     </p>
                   </div>
@@ -772,7 +772,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                         <tr key={res.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="py-3 px-4 font-semibold text-slate-900">
                             <div>{res.studentEmail}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">UID: {res.studentId.substring(0, 12)}...</div>
+                            <div className="text-[12.5px] text-slate-400 font-mono">UID: {res.studentId.substring(0, 12)}...</div>
                           </td>
                           <td className="py-3 px-4 font-medium text-slate-800">{res.examTitle}</td>
                           <td className="py-3 px-4">
@@ -787,11 +787,11 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                           <td className="py-3 px-4">{Math.round(res.timeSpentSeconds / 60)} phút</td>
                           <td className="py-3 px-4">
                             {res.verificationStatus === 'server_verified' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 🔒 Đã xác thực máy chủ
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                 ⚠️ Dự phòng
                               </span>
                             )}
@@ -841,7 +841,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                   </div>
 
                   <div className="space-y-3">
-                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[13px]">
                       Phương án trả lời của thí sinh:
                     </h4>
                     <div className="space-y-2">
@@ -981,7 +981,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
               </div>
 
               {!isRootAdmin && (
-                <p className="text-[11px] text-amber-700 italic">
+                <p className="text-[13px] text-amber-700 italic">
                   * Thầy cần đăng nhập bằng tài khoản Quản trị gốc (viethathd@gmail.com) để thực hiện thao tác cấp quyền.
                 </p>
               )}
@@ -1003,17 +1003,17 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-xs text-slate-900">{adm.displayName}</span>
                         {isRoot ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                          <span className="px-2 py-0.5 rounded text-[12.5px] font-bold bg-amber-100 text-amber-800">
                             QUẢN TRỊ VIÊN GỐC
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">
+                          <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-blue-100 text-blue-800">
                             GIÁO VIÊN BỘ MÔN
                           </span>
                         )}
                       </div>
                       <div className="text-xs text-slate-500 font-mono">{adm.email}</div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[12.5px] text-slate-400">
                         Cấp ngày: {new Date(adm.assignedAt).toLocaleDateString('vi-VN')} • Bởi: {adm.assignedBy}
                       </div>
                     </div>
@@ -1172,15 +1172,15 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-slate-700">
                   <div className="p-2.5 rounded-lg bg-slate-50">
-                    <span className="text-slate-400 block text-[10px]">Độ trễ phản hồi Firestore:</span>
+                    <span className="text-slate-400 block text-[12.5px]">Độ trễ phản hồi Firestore:</span>
                     <strong className="text-sm text-blue-600 font-mono">{testResult.latency} ms</strong>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50">
-                    <span className="text-slate-400 block text-[10px]">Số chuyên đề đọc được:</span>
+                    <span className="text-slate-400 block text-[12.5px]">Số chuyên đề đọc được:</span>
                     <strong className="text-sm text-slate-800 font-mono">{testResult.docsCount} docs</strong>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50">
-                    <span className="text-slate-400 block text-[10px]">Chặn ghi trái phép:</span>
+                    <span className="text-slate-400 block text-[12.5px]">Chặn ghi trái phép:</span>
                     <strong className="text-sm text-emerald-600">
                       {testResult.rulesBlocked ? 'Đã chặn 100%' : 'Chưa kích hoạt'}
                     </strong>

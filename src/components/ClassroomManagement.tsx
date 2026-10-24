@@ -413,7 +413,7 @@ export const ClassroomManagement: React.FC = () => {
                       </span>
                       <h3 className="font-bold text-sm text-slate-900 mt-2">{c.name}</h3>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    <span className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 bg-slate-100 text-slate-600">
                       Khối {c.grade}
                     </span>
                   </div>
@@ -426,7 +426,7 @@ export const ClassroomManagement: React.FC = () => {
                   {/* Account stats badge */}
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span className="text-slate-500">Sĩ số: <strong>{studentsInClass.length} HS</strong></span>
-                    <span className="text-[11px] font-bold text-emerald-600">
+                    <span className="text-[13px] font-bold text-emerald-600">
                       {withAccount}/{studentsInClass.length} có TK
                     </span>
                   </div>
@@ -501,12 +501,12 @@ export const ClassroomManagement: React.FC = () => {
                         <td className="py-3 px-4 text-slate-600">{std.gender || '—'}</td>
                         <td className="py-3 px-4">
                           {std.hasAccount ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 className="w-3 h-3" />
                               Đã cấp tài khoản
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                               <Clock className="w-3 h-3" />
                               Chờ cấp tài khoản
                             </span>
@@ -521,7 +521,7 @@ export const ClassroomManagement: React.FC = () => {
                                 transferStudent(std.id, target.id, target.code);
                               }
                             }}
-                            className="text-[11px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-semibold text-slate-700 focus:outline-none"
+                            className="text-[13px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-semibold text-slate-700 focus:outline-none"
                           >
                             {classrooms.map(c => (
                               <option key={c.id} value={c.code}>{c.code}</option>
@@ -721,9 +721,9 @@ export const ClassroomManagement: React.FC = () => {
                         <td className="py-2 px-3 font-medium">{std.fullName}</td>
                         <td className="py-2 px-3">
                           {std.hasAccount ? (
-                            <span className="text-emerald-700 font-bold text-[11px]">✓ Đã có tài khoản</span>
+                            <span className="text-emerald-700 font-bold text-[13px]">✓ Đã có tài khoản</span>
                           ) : (
-                            <span className="text-amber-700 font-bold text-[11px]">Chờ tạo tài khoản</span>
+                            <span className="text-amber-700 font-bold text-[13px]">Chờ tạo tài khoản</span>
                           )}
                         </td>
                       </tr>

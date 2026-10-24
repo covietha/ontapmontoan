@@ -245,7 +245,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                       <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 text-blue-700">
                         {exam.code}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
                       </span>
                     </div>
@@ -604,7 +604,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
           </div>
 
           {/* Quick status legend */}
-          <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+          <div className="grid grid-cols-2 gap-2 text-[13px] text-slate-600">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-blue-600" />
               <span>Đã chọn</span>
