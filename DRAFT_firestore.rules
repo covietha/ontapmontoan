@@ -1,0 +1,161 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 0. MẶC ĐỊNH TỪ CHỐI TOÀN BỘ (DEFAULT DENY-ALL)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==========================================
+    // HÀM KIỂM TRA ĐĂNG NHẬP & DANH TÍNH
+    // ==========================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Quản trị viên gốc (Root Admin):
+    // Chỉ duy nhất email chính chủ của Thầy đã được Google xác minh (email_verified == true)
+    function isRootAdmin() {
+      return isSignedIn() && 
+        request.auth.token.email == 'viethathd@gmail.com' && 
+        request.auth.token.email_verified == true;
+    }
+
+    // Quản trị viên (Admin):
+    // Là Quản trị gốc HOẶC có tài liệu UID nằm trong danh mục /admins (do Quản trị gốc cấp trước đó)
+    function isAdmin() {
+      return isRootAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // ==========================================
+    // 1. BẢNG ADMINS (QUẢN TRỊ VIÊN)
+    // ==========================================
+    // Quyền đọc: Chỉ Admin mới được đọc danh sách ban quản trị.
+    // Quyền cấp / thu hồi: CHỈ QUẢN TRỊ GỐC (isRootAdmin) mới có quyền cấp hoặc thu hồi quyền admin.
+    // Các tài khoản khác (kể cả admin được ủy quyền cấp dưới) tuyệt đối không thể tự ý thêm admin mới.
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if isRootAdmin();
+    }
+
+    // ==========================================
+    // 2. BẢNG USERS (HỒ SƠ HỌC SINH & GIÁO VIÊN)
+    // ==========================================
+    // Học sinh chỉ đọc hồ sơ của chính mình; Giáo viên xem được danh sách học sinh.
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      // Khi đăng ký lần đầu: Bắt buộc role là 'student', không được chứa cờ admin
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        (request.resource.data.role == 'student' && !('isAdmin' in request.resource.data)) || 
+        isAdmin()
+      );
+
+      // Khi cập nhật: Khóa chặt, không cho học sinh tự sửa đổi trường 'role' hoặc 'isAdmin'
+      allow update: if (
+        isOwner(userId) && 
+        request.resource.data.role == resource.data.role && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isAdmin'])
+      ) || isAdmin();
+
+      allow delete: if isRootAdmin();
+    }
+
+    // ==========================================
+    // 3. HỌC LIỆU CÔNG KHAI (CHUYÊN ĐỀ & BÀI HỌC LÝ THUYẾT)
+    // ==========================================
+    // Cho phép học sinh đọc tự do để ôn tập lý thuyết, xem công thức và các bẫy thường gặp.
+    // Chỉ Giáo viên mới có quyền thêm bài học mới hoặc cập nhật nội dung.
+    match /topics/{topicId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 4. NGÂN HÀNG CÂU HỎI TRẮC NGHIỆM
+    // ==========================================
+    // Đọc: Yêu cầu học sinh phải đăng nhập mới được tải câu hỏi luyện tập.
+    // Ghi: Chỉ Giáo viên mới có quyền thêm/sửa câu hỏi và duyệt nội dung.
+    match /questions/{questionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 5. ĐÁP ÁN & LỜI GIẢI MẬT (QUESTION KEYS)
+    // ==========================================
+    // Thiết kế tách biệt (Split Collection):
+    // Bộ sưu tập này lưu trữ đáp án đúng (correctOptionIndex) và lời giải chi tiết cho kỳ thi.
+    // BẢO VỆ TUYỆT ĐỐI: Học sinh KHÔNG THỂ đọc bảng này từ trình duyệt (kể cả khi đã đăng nhập).
+    // Chỉ có Giáo viên / Quản trị viên mới có quyền truy cập.
+    match /questionKeys/{questionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ==========================================
+    // 6. ĐỀ THI THỬ (EXAMS)
+    // ==========================================
+    // Học sinh đăng nhập được đọc danh sách đề thi và thời gian thi.
+    // Chỉ giáo viên mới có quyền tạo đề thi mới hoặc chỉnh sửa cấu trúc đề.
+    match /exams/{examId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 7. LƯỢT LÀM BÀI TỰ LUYỆN (ATTEMPTS)
+    // ==========================================
+    // Học sinh chỉ xem và tạo lượt làm bài của chính mình.
+    match /attempts/{attemptId} {
+      allow get: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+      
+      // Tạo lượt làm bài: Bắt buộc studentId là UID người gửi
+      allow create: if isSignedIn() && 
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.isCorrect is bool &&
+        request.resource.data.keys().hasAll(['studentId', 'questionId', 'lessonId', 'selectedOptionIndex', 'isCorrect']);
+
+      // Cập nhật: CHỈ cho phép cập nhật trạng thái ôn bù (resolvedAfterReview) hoặc số lần thử lại (reAttemptCount)
+      // KHÓA BẤT BIẾN: Tuyệt đối không cho sửa studentId, questionId, isCorrect hoặc selectedOptionIndex của lượt làm cũ!
+      allow update: if isSignedIn() && (
+        (
+          resource.data.studentId == request.auth.uid &&
+          request.resource.data.studentId == resource.data.studentId &&
+          request.resource.data.questionId == resource.data.questionId &&
+          request.resource.data.isCorrect == resource.data.isCorrect &&
+          request.resource.data.selectedOptionIndex == resource.data.selectedOptionIndex &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resolvedAfterReview', 'reAttemptCount'])
+        ) || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 8. BẢNG KẾT QUẢ THI THỬ (EXAMRESULTS)
+    // ==========================================
+    // - Học sinh chỉ được ĐỌC kết quả thi của chính mình; Giáo viên xem được toàn bộ.
+    // - HỌC SINH TUYỆT ĐỐI KHÔNG ĐƯỢC TẠO HOẶC SỬA KẾT QUẢ THI CHÍNH THỨC TỪ CLIENT SDK.
+    // - Chỉ Admin hoặc thành phần máy chủ đáng tin cậy (Firestore Admin SDK / Server Engine) mới có quyền ghi.
+    match /examResults/{resultId} {
+      allow get: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+      
+      // Khóa hoàn toàn quyền ghi từ trình duyệt học sinh:
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

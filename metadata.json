@@ -1,0 +1,6 @@
+{
+  "name": "THPT MATH 360",
+  "description": "Hệ thống ôn thi tốt nghiệp THPT môn Toán – Học đúng trọng tâm, luyện tập có định hướng, tiến bộ từng ngày.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

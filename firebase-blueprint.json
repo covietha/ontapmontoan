@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role differentiation for teacher and student",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["teacher", "student"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Topic": {
+      "title": "Topic",
+      "description": "Math curriculum topic for THPT national exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "order": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "title"]
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "Theory lesson with formulas, examples, common mistakes and prerequisite links",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "topicId": { "type": "string" },
+        "lessonCode": { "type": "string" },
+        "title": { "type": "string" },
+        "objectives": { "type": "string" },
+        "theorySummary": { "type": "string" },
+        "formulas": { "type": "array" },
+        "stepByStepExamples": { "type": "array" },
+        "commonMistakes": { "type": "array" },
+        "relatedPracticeQuestionIds": { "type": "array" },
+        "status": { "type": "string", "enum": ["sample_needs_review", "verified"] }
+      },
+      "required": ["id", "topicId", "lessonCode", "title"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "4-choice math exam question with verified answers, hint, and lesson mapping",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "topicId": { "type": "string" },
+        "lessonId": { "type": "string" },
+        "questionType": { "type": "string", "enum": ["mcq", "true_false", "short_answer"] },
+        "prompt": { "type": "string" },
+        "options": { "type": "array" },
+        "correctOptionIndex": { "type": "number" },
+        "explanation": { "type": "string" },
+        "hintOnWrong": { "type": "string" },
+        "prerequisiteKnowledge": { "type": "string" },
+        "similarQuestionIds": { "type": "array" },
+        "difficulty": { "type": "string", "enum": ["nhan_biet", "thong_hieu", "van_dung", "van_dung_cao"] },
+        "status": { "type": "string", "enum": ["sample_needs_review", "verified"] }
+      },
+      "required": ["id", "code", "topicId", "lessonId", "prompt", "options", "correctOptionIndex", "explanation"]
+    },
+    "Attempt": {
+      "title": "Attempt",
+      "description": "Student single question practice attempt",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "questionId": { "type": "string" },
+        "lessonId": { "type": "string" },
+        "topicId": { "type": "string" },
+        "selectedOptionIndex": { "type": "number" },
+        "isCorrect": { "type": "boolean" },
+        "attemptNumber": { "type": "number" },
+        "reAttemptCount": { "type": "number" },
+        "resolvedAfterReview": { "type": "boolean" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "studentId", "questionId", "isCorrect"]
+    },
+    "Exam": {
+      "title": "Exam",
+      "description": "Official mock test for THPT exam practice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "code": { "type": "string" },
+        "description": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "questionIds": { "type": "array" },
+        "status": { "type": "string", "enum": ["sample_needs_review", "verified"] }
+      },
+      "required": ["id", "title", "durationMinutes", "questionIds"]
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Student mock exam submission result and score",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "score": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "timeSpentSeconds": { "type": "number" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["id", "examId", "studentId", "score", "correctCount", "totalCount"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile with role"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Verified admin teachers"
+    },
+    "/topics/{topicId}": {
+      "schema": { "$ref": "#/entities/Topic" },
+      "description": "Math exam curriculum topics"
+    },
+    "/lessons/{lessonId}": {
+      "schema": { "$ref": "#/entities/Lesson" },
+      "description": "Theory lessons and key formulas"
+    },
+    "/questions/{questionId}": {
+      "schema": { "$ref": "#/entities/Question" },
+      "description": "Question bank for exercises and exams"
+    },
+    "/attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/Attempt" },
+      "description": "Practice question attempt records"
+    },
+    "/exams/{examId}": {
+      "schema": { "$ref": "#/entities/Exam" },
+      "description": "Mock tests"
+    },
+    "/examResults/{resultId}": {
+      "schema": { "$ref": "#/entities/ExamResult" },
+      "description": "Exam results history"
+    }
+  }
+}

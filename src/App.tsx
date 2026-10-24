@@ -1,0 +1,414 @@
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { DataProvider } from './context/DataContext';
+import { Sidebar } from './components/Sidebar';
+import { BrandMark } from './components/BrandMark';
+import { NavTab, NAV_BY_ID, PRACTICE_MODES, SUB_TABS, SCHOOL } from './config/navigation';
+import Overview from './components/Overview';
+import TheoryRepository from './components/TheoryRepository';
+import TopicPractice from './components/TopicPractice';
+import ExamRoom from './components/ExamRoom';
+import MistakeNotebook from './components/MistakeNotebook';
+import ProgressReport from './components/ProgressReport';
+import { TeacherManagement } from './components/TeacherManagement';
+import { ClassroomManagement } from './components/ClassroomManagement';
+import { QuestionBankManager } from './components/QuestionBankManager';
+import { AccountManagement } from './components/AccountManagement';
+import StudentExamHistory from './components/StudentExamHistory';
+import LoginScreen from './components/LoginScreen';
+import { useData } from './context/DataContext';
+import { 
+  Menu, LogOut, ShieldAlert, Target, FileText, ChevronRight,
+  PanelLeftClose, PanelLeftOpen, Wifi, WifiOff, CalendarDays
+} from 'lucide-react';
+
+function AppContent() {
+  const { isAuthenticated, isTeacher, isRootAdmin, loading, profile, logout } = useAuth();
+  const { attempts, questions } = useData();
+  const [teacherSub, setTeacherSub] = useState<{ tab: NavTab; sub: string } | null>(null);
+  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  // Layout states
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Active Tab state: defaulted by role
+  const [activeTab, setActiveTab] = useState<NavTab>(isTeacher ? 'teacher_overview' : 'student_home');
+  const [practiceSubMode, setPracticeSubMode] = useState<'topics' | 'exam'>('topics');
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('topic-dao-ham');
+
+  // Sync default tab when role changes
+  useEffect(() => {
+    if (isTeacher) {
+      if (activeTab.startsWith('student_')) {
+        setActiveTab('teacher_overview');
+      }
+    } else {
+      if (activeTab.startsWith('teacher_')) {
+        setActiveTab('student_home');
+      }
+    }
+  }, [isTeacher]);
+
+  // Handlers for cross-component direct linking
+  const handleOpenLesson = (lessonId: string) => {
+    setSelectedLessonId(lessonId);
+    if (isTeacher) {
+      setActiveTab('teacher_curriculum');
+    } else {
+      setActiveTab('student_lessons');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartPracticeQuestion = (questionId: string) => {
+    setSelectedQuestionId(questionId);
+    setPracticeSubMode('topics');
+    setActiveTab('student_practice');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleStartTopicPractice = (topicId: string) => {
+    setSelectedTopicId(topicId);
+    setSelectedQuestionId(null);
+    setPracticeSubMode('topics');
+    setActiveTab('student_practice');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateToExamRoom = () => {
+    setPracticeSubMode('exam');
+    setActiveTab('student_practice');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-blue-950 paper-grid-dark flex flex-col items-center justify-center text-blue-100 gap-4" role="status">
+        <BrandMark size={56} className="text-blue-100" />
+        <p className="text-sm text-blue-200">Đang mở hệ thống ôn thi {SCHOOL.name}…</p>
+      </div>
+    );
+  }
+
+  // If unauthenticated: Strictly render LoginScreen
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  // Thanh trạng thái: mọi thông tin đều lấy từ menu đang mở
+  const nav = NAV_BY_ID[activeTab];
+  const inPractice = activeTab === 'student_practice';
+  const mode = inPractice ? PRACTICE_MODES[practiceSubMode] : null;
+  const subKey = teacherSub && teacherSub.tab === activeTab ? teacherSub.sub : null;
+  const sub = subKey ? SUB_TABS[activeTab]?.[subKey] ?? null : null;
+  const statusTitle = mode ? mode.title : sub ? sub.title : nav.title;
+  const statusDescription = mode ? mode.description : sub ? sub.description : nav.description;
+  const StatusIcon = mode ? mode.icon : nav.icon;
+  const roleLabel = isRootAdmin ? 'Quản trị viên gốc' : isTeacher ? 'Giáo viên Toán' : 'Học sinh';
+
+  const studentId = profile?.uid || 'guest-student';
+  const mistakeCount = new Set(
+    attempts.filter(a => a.studentId === studentId && !a.isCorrect && !a.resolvedAfterReview).map(a => a.questionId)
+  ).size;
+  const pendingCount = questions.filter(q => (q.approvalStatus || 'approved') === 'pending').length;
+
+  let statusMeta: string | null = null;
+  if (activeTab === 'student_mistakes') statusMeta = mistakeCount ? `${mistakeCount} câu cần ôn lại` : 'Chưa có câu sai';
+  if (activeTab === 'teacher_questions') statusMeta = pendingCount ? `${pendingCount} câu chờ duyệt` : 'Không có câu chờ duyệt';
+  if (activeTab === 'student_practice' && practiceSubMode === 'exam') statusMeta = 'Chấm điểm bởi máy chủ';
+
+  const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  return (
+    <div className="min-h-screen flex bg-[var(--paper)] text-slate-900" style={{ ['--tone' as any]: nav.tone }}>
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={(t) => { setActiveTab(t); window.scrollTo({ top: 0 }); }}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
+
+      <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-200 ${
+        collapsed ? 'md:ml-[4.5rem]' : 'md:ml-66'
+      }`}>
+
+        {/* Thanh trạng thái trên cùng: đổi theo menu đang mở */}
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+          <div className="tone-rule" />
+          <div className="min-h-[4.25rem] px-4 sm:px-6 py-2.5 flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              aria-label="Mở menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden md:flex p-2 -ml-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
+              aria-label={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+            >
+              {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
+
+            {/* key đổi theo menu để chạy lại chuyển động vào của tiêu đề */}
+            <div key={activeTab + (mode ? practiceSubMode : '') + (subKey ?? '')} className="status-in flex items-center gap-3 min-w-0 flex-1">
+              <div className="tone-chip hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0">
+                <StatusIcon className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <nav aria-label="Vị trí hiện tại" className="flex items-center gap-1 text-xs text-slate-500">
+                  <span>{roleLabel}</span>
+                  <ChevronRight className="w-3 h-3 text-slate-300" aria-hidden="true" />
+                  <span>{nav.section}</span>
+                  {(mode || sub) && (<><ChevronRight className="w-3 h-3 text-slate-300" aria-hidden="true" /><span>{nav.title}</span></>)}
+                </nav>
+                <h1 className="text-lg sm:text-xl leading-tight text-slate-900 truncate">{statusTitle}</h1>
+                <p className="hidden lg:block text-xs text-slate-500 truncate">{statusDescription}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              {statusMeta && (
+                <span className="tone-chip hidden md:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" aria-live="polite">
+                  {statusMeta}
+                </span>
+              )}
+              <button
+                onClick={logout}
+                className="px-3 py-2 text-sm font-medium text-slate-700 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 rounded-lg flex items-center gap-1.5"
+                title="Đăng xuất khỏi hệ thống"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content Body */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[88rem] w-full mx-auto space-y-6">
+          
+          {/* ========================================================================= */}
+          {/* STUDENT INTERFACE (Strictly 5 sections) */}
+          {/* ========================================================================= */}
+          {!isTeacher && (
+            <>
+              {/* 1. Trang chủ học tập */}
+              {activeTab === 'student_home' && (
+                <Overview
+                  onNavigate={(tab) => {
+                    setActiveTab(tab);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onOpenLesson={handleOpenLesson}
+                  onOpenTopicPractice={handleStartTopicPractice}
+                />
+              )}
+
+              {/* 2. Bài học và chuyên đề kiến thức */}
+              {activeTab === 'student_lessons' && (
+                <TheoryRepository
+                  initialLessonId={selectedLessonId}
+                  onStartPracticeQuestion={handleStartPracticeQuestion}
+                  onStartTopicPractice={handleStartTopicPractice}
+                />
+              )}
+
+              {/* 3. Luyện tập và thi thử */}
+              {activeTab === 'student_practice' && (
+                <div className="space-y-6">
+                  {/* Switcher between Topic Practice and Exam Room */}
+                  <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-2 max-w-md mx-auto">
+                    <button
+                      onClick={() => setPracticeSubMode('topics')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        practiceSubMode === 'topics'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Target className="w-4 h-4" />
+                      <span>Luyện tập theo dạng</span>
+                    </button>
+
+                    <button
+                      onClick={() => setPracticeSubMode('exam')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        practiceSubMode === 'exam'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Phòng thi thử bấm giờ</span>
+                    </button>
+                  </div>
+
+                  {practiceSubMode === 'topics' ? (
+                    <TopicPractice
+                      initialTopicId={selectedTopicId}
+                      initialQuestionId={selectedQuestionId}
+                      onOpenLesson={handleOpenLesson}
+                    />
+                  ) : (
+                    <ExamRoom
+                      onOpenLesson={handleOpenLesson}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* 4. Kết quả thi và lịch sử làm bài */}
+              {activeTab === 'student_results' && (
+                <StudentExamHistory
+                  onOpenLesson={handleOpenLesson}
+                  onNavigateToExam={handleNavigateToExamRoom}
+                />
+              )}
+
+              {/* 5. Sổ tay lỗi sai, lời giải và nội dung cần ôn tập */}
+              {activeTab === 'student_mistakes' && (
+                <MistakeNotebook
+                  onPracticeQuestion={handleStartPracticeQuestion}
+                  onOpenLesson={handleOpenLesson}
+                />
+              )}
+
+              {/* Strict Security Guard: If student attempts to reach teacher tabs */}
+              {activeTab.startsWith('teacher_') && (
+                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 max-w-md mx-auto space-y-4 my-8">
+                  <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Không Có Quyền Truy Cập</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Tài khoản học sinh không có quyền truy cập khu vực nghiệp vụ sư phạm của giáo viên.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('student_home')}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                  >
+                    Quay lại Trang chủ học tập
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TEACHER & ADMIN INTERFACE */}
+          {/* ========================================================================= */}
+          {isTeacher && (
+            <>
+              {/* 1. Trang tổng quan */}
+              {activeTab === 'teacher_overview' && (
+                <ProgressReport
+                  onOpenLesson={handleOpenLesson}
+                  onOpenPractice={handleStartTopicPractice}
+                />
+              )}
+
+              {/* 2. Quản lý lớp học & học sinh theo niên khóa */}
+              {activeTab === 'teacher_classrooms' && (
+                <ClassroomManagement />
+              )}
+
+              {/* 3. Ngân hàng câu hỏi & Duyệt 4 bước (.docx importer) */}
+              {activeTab === 'teacher_questions' && (
+                <QuestionBankManager />
+              )}
+
+              {/* 4. Bổ sung và quản lý kiến thức, chuyên đề */}
+              {activeTab === 'teacher_curriculum' && (
+                <TeacherManagement initialSubTab="review" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+              )}
+
+              {/* Kiểm duyệt học liệu */}
+              {activeTab === 'teacher_review' && (
+                <TeacherManagement initialSubTab="review" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+              )}
+
+              {/* 5. Soạn đề thi & Ngân hàng đề */}
+              {activeTab === 'teacher_exams' && (
+                <TeacherManagement initialSubTab="addQuestion" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+              )}
+
+              {/* 6. Xem kết quả thi của học sinh, bài làm chi tiết */}
+              {activeTab === 'teacher_results' && (
+                <TeacherManagement initialSubTab="results" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+              )}
+
+              {/* 7. Quản lý tài khoản trường & Phân quyền */}
+              {activeTab === 'teacher_accounts' && (
+                <AccountManagement />
+              )}
+
+              {/* 8. Phân quyền quản trị (Chỉ mở cho Root Admin viethathd@gmail.com) */}
+              {activeTab === 'teacher_admins' && (
+                isRootAdmin ? (
+                  <TeacherManagement initialSubTab="admins" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                ) : (
+                  <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 max-w-md mx-auto space-y-4 my-8">
+                    <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">
+                      <ShieldAlert className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Chỉ Dành Cho Quản Trị Viên Gốc</h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Chức năng cấp hoặc thu hồi quyền quản trị viên chỉ dành riêng cho tài khoản gốc <strong>viethathd@gmail.com</strong>.
+                    </p>
+                  </div>
+                )
+              )}
+            </>
+          )}
+
+        </main>
+
+        {/* Thanh trạng thái dưới cùng */}
+        <footer className="sticky bottom-0 z-20 mt-auto border-t border-slate-200 bg-white text-xs text-slate-600" role="contentinfo">
+          <div className="px-4 sm:px-6 h-9 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--tone)' }} aria-hidden="true" />
+              <span className="truncate"><span className="text-slate-400">Đang mở:</span> <span className="font-medium text-slate-800">{statusTitle}</span></span>
+            </div>
+            <div className="hidden md:flex items-center gap-4 text-slate-500">
+              <span>{SCHOOL.name}</span>
+              <span>{SCHOOL.year}</span>
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
+              <span className="hidden sm:flex items-center gap-1.5 capitalize"><CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />{today}</span>
+              <span className={`flex items-center gap-1.5 font-medium ${online ? 'text-emerald-700' : 'text-rose-700'}`}>
+                {online ? <Wifi className="w-3.5 h-3.5" aria-hidden="true" /> : <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />}
+                {online ? 'Đã kết nối' : 'Mất kết nối'}
+              </span>
+            </div>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
+    </AuthProvider>
+  );
+}

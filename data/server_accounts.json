@@ -1,0 +1,56 @@
+[
+  {
+    "id": "sch_acc_gv01",
+    "username": "GV01",
+    "displayName": "Thầy Nguyễn Văn Bình",
+    "email": "gv01@thptmath360.vn",
+    "role": "teacher",
+    "classroom": "Tổ Toán - Chủ nhiệm 12A1",
+    "status": "active",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "viethathd@gmail.com",
+    "passwordHash": "b6ed624e4198dd1d321ddd129aa9beb2bce01ea8b07bb827fa650910ecfd78491d92ddec94ebd72e59b1138f2feb124252d655b75ce2eaea7178e14792efe303",
+    "salt": "56ab5fd94c35543c6d61a484935ba405",
+    "lastLoginAt": "2026-10-24T07:58:51.272Z"
+  },
+  {
+    "id": "sch_acc_hs12001",
+    "username": "HS12001",
+    "displayName": "Nguyễn Văn An",
+    "email": "hs12001@thptmath360.vn",
+    "role": "student",
+    "classroom": "12A1",
+    "status": "active",
+    "createdAt": "2026-01-05T00:00:00.000Z",
+    "createdBy": "viethathd@gmail.com",
+    "passwordHash": "6c46487e8295781c3031eb9340e85160d127c9de61550b11993398e7790d687cd5a2eeb98f64d4488e2b96045941b7bba61ebf0c659df132f5f7e2ddd36a624d",
+    "salt": "0f57b882ff377592f0e2cea058511c3d",
+    "lastLoginAt": "2026-10-24T07:58:36.863Z"
+  },
+  {
+    "id": "sch_acc_hs12002",
+    "username": "HS12002",
+    "displayName": "Trần Thị Mai",
+    "email": "hs12002@thptmath360.vn",
+    "role": "student",
+    "classroom": "12A1",
+    "status": "active",
+    "createdAt": "2026-01-05T00:00:00.000Z",
+    "createdBy": "viethathd@gmail.com",
+    "passwordHash": "c347ec58731c2a43ec6af1b0ed07390c3f3c63380f0d330408ab2453567dbccf5a9a91c42f020be03600c9fa28d2fe864edb8dfddf4524a0c24d454145c7e1a4",
+    "salt": "693ddfc801681282b8ab95402d8c64ad"
+  },
+  {
+    "id": "sch_acc_hs12003",
+    "username": "HS12003",
+    "displayName": "Lê Hoàng Nam",
+    "email": "hs12003@thptmath360.vn",
+    "role": "student",
+    "classroom": "12A2",
+    "status": "active",
+    "createdAt": "2026-01-06T00:00:00.000Z",
+    "createdBy": "viethathd@gmail.com",
+    "passwordHash": "051a52cbc7862c20550faab5f686cb81c9e15e30d746cf4bfc006ac6f2c23f6073ccab334310a15e3591cb347c9fb2309dbc7c68a4ce91fd7151e4dc27aa0a4b",
+    "salt": "1f106cda15d0457d4f20a0ad47270775"
+  }
+]

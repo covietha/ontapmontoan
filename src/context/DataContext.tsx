@@ -1,0 +1,746 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  Topic, 
+  Lesson, 
+  Question, 
+  Exam, 
+  QuestionAttempt, 
+  ExamResult, 
+  ContentStatus,
+  GradeVerificationStatus,
+  QuestionApprovalStatus,
+  Classroom,
+  StudentProfile,
+  QuestionSnapshot
+} from '../types';
+import { 
+  INITIAL_TOPICS, 
+  INITIAL_LESSONS, 
+  INITIAL_QUESTIONS, 
+  INITIAL_EXAMS,
+  INITIAL_CLASSROOMS,
+  INITIAL_STUDENTS
+} from '../data/initialData';
+import { db } from '../firebase';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  query, 
+  where 
+} from 'firebase/firestore';
+import { useAuth } from './AuthContext';
+
+interface DataContextType {
+  topics: Topic[];
+  lessons: Lesson[];
+  questions: Question[];
+  exams: Exam[];
+  attempts: QuestionAttempt[];
+  examResults: ExamResult[];
+  classrooms: Classroom[];
+  students: StudentProfile[];
+  loading: boolean;
+  
+  // Lookups
+  getLessonById: (lessonId: string) => Lesson | undefined;
+  getQuestionById: (questionId: string) => Question | undefined;
+  getSimilarQuestions: (questionId: string) => Question[];
+  getClassroomById: (classroomId: string) => Classroom | undefined;
+  getStudentsByClassroom: (classroomId: string) => StudentProfile[];
+  
+  // Student actions
+  recordQuestionAttempt: (params: {
+    questionId: string;
+    lessonId: string;
+    topicId: string;
+    selectedOptionIndex: number;
+    isCorrect: boolean;
+    isReAttempt?: boolean;
+  }) => Promise<QuestionAttempt>;
+  
+  recordExamResult: (params: {
+    examId: string;
+    examTitle: string;
+    score: number;
+    correctCount: number;
+    totalCount: number;
+    timeSpentSeconds: number;
+    userAnswers: Record<string, number>;
+    verificationStatus?: GradeVerificationStatus;
+  }) => Promise<ExamResult>;
+  
+  markMistakeResolved: (attemptId: string) => void;
+  
+  // Teacher & Content actions
+  updateLesson: (lesson: Lesson) => Promise<void>;
+  addLesson: (lesson: Omit<Lesson, 'id'>) => Promise<void>;
+  updateQuestion: (question: Question) => Promise<void>;
+  addQuestion: (question: Omit<Question, 'id'>) => Promise<void>;
+  verifyContent: (type: 'lesson' | 'question' | 'exam', id: string) => Promise<void>;
+  
+  // Question Workflow (4 states: pending, approved, rejected, trash)
+  approveQuestion: (questionId: string) => Promise<void>;
+  rejectQuestion: (questionId: string, reason: string) => Promise<void>;
+  moveToTrashQuestion: (questionId: string) => Promise<void>;
+  restoreQuestion: (questionId: string) => Promise<void>;
+  deleteQuestionPermanently: (questionId: string) => Promise<{ success: boolean; error?: string }>;
+  importWordQuestions: (parsedQuestions: Omit<Question, 'id' | 'createdAt'>[]) => Promise<{ importedCount: number; duplicateCount: number }>;
+  
+  // Exam creation with Snapshot
+  createExamWithSnapshot: (examData: {
+    title: string;
+    code: string;
+    description: string;
+    durationMinutes: number;
+    questionIds: string[];
+    grade?: number;
+  }) => Promise<Exam>;
+
+  // Classroom Management
+  addClassroom: (classroomData: Omit<Classroom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; error?: string; classroom?: Classroom }>;
+  updateClassroom: (classroom: Classroom) => Promise<void>;
+  archiveClassroom: (classroomId: string) => Promise<void>;
+  addStudentsBatch: (newStudents: Omit<StudentProfile, 'id' | 'createdAt'>[]) => Promise<{ addedCount: number; duplicateCount: number; errors: string[] }>;
+  transferStudent: (studentId: string, targetClassroomId: string, targetClassroomCode: string) => Promise<void>;
+  createAccountsBatchForClassroom: (classroomId: string, studentIds: string[], defaultPassword?: string) => Promise<{ createdCount: number; existedCount: number; failedCount: number; accounts: any[] }>;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { profile, isTeacher, isRootAdmin, getIdToken } = useAuth();
+  
+  const [topics, setTopics] = useState<Topic[]>(() => {
+    const saved = localStorage.getItem('thpt_math_topics');
+    return saved ? JSON.parse(saved) : INITIAL_TOPICS;
+  });
+
+  const [lessons, setLessons] = useState<Lesson[]>(() => {
+    const saved = localStorage.getItem('thpt_math_lessons');
+    return saved ? JSON.parse(saved) : INITIAL_LESSONS;
+  });
+
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    const saved = localStorage.getItem('thpt_math_questions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((q: any) => ({
+          ...q,
+          approvalStatus: q.approvalStatus || (q.status === 'verified' ? 'approved' : 'pending'),
+          grade: q.grade || 12
+        }));
+      } catch {
+        // Fallback
+      }
+    }
+    return INITIAL_QUESTIONS.map(q => ({
+      ...q,
+      approvalStatus: 'approved' as QuestionApprovalStatus,
+      grade: 12
+    }));
+  });
+
+  const [exams, setExams] = useState<Exam[]>(() => {
+    const saved = localStorage.getItem('thpt_math_exams');
+    return saved ? JSON.parse(saved) : INITIAL_EXAMS;
+  });
+
+  const [classrooms, setClassrooms] = useState<Classroom[]>(() => {
+    const saved = localStorage.getItem('thpt_math_classrooms');
+    return saved ? JSON.parse(saved) : INITIAL_CLASSROOMS;
+  });
+
+  const [students, setStudents] = useState<StudentProfile[]>(() => {
+    const saved = localStorage.getItem('thpt_math_students');
+    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+  });
+
+  const [attempts, setAttempts] = useState<QuestionAttempt[]>(() => {
+    const saved = localStorage.getItem('thpt_math_attempts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [examResults, setExamResults] = useState<ExamResult[]>(() => {
+    const saved = localStorage.getItem('thpt_math_exam_results');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('thpt_math_topics', JSON.stringify(topics));
+  }, [topics]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_lessons', JSON.stringify(lessons));
+  }, [lessons]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_questions', JSON.stringify(questions));
+  }, [questions]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_exams', JSON.stringify(exams));
+  }, [exams]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_classrooms', JSON.stringify(classrooms));
+  }, [classrooms]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_students', JSON.stringify(students));
+  }, [students]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_attempts', JSON.stringify(attempts));
+  }, [attempts]);
+
+  useEffect(() => {
+    localStorage.setItem('thpt_math_exam_results', JSON.stringify(examResults));
+  }, [examResults]);
+
+  // Sync exam results from server endpoint
+  useEffect(() => {
+    const syncServerResults = async () => {
+      try {
+        const token = await getIdToken();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('/api/exams/results', { headers });
+        if (res.ok) {
+          const serverData = await res.json();
+          if (Array.isArray(serverData)) {
+            setExamResults(prev => {
+              const ids = new Set(prev.map(r => r.id));
+              const merged = [...prev];
+              serverData.forEach((s: ExamResult) => {
+                if (!ids.has(s.id)) {
+                  merged.push(s);
+                  ids.add(s.id);
+                }
+              });
+              return merged;
+            });
+          }
+        }
+      } catch (e) {
+        // Safe offline
+      }
+    };
+
+    if (profile?.uid) {
+      syncServerResults();
+    }
+  }, [profile?.uid, getIdToken]);
+
+  // Lookups
+  const getLessonById = (lessonId: string): Lesson | undefined => {
+    return lessons.find(l => l.id === lessonId || l.lessonCode === lessonId);
+  };
+
+  const getQuestionById = (questionId: string): Question | undefined => {
+    return questions.find(q => q.id === questionId || q.code === questionId);
+  };
+
+  const getSimilarQuestions = (questionId: string): Question[] => {
+    const target = getQuestionById(questionId);
+    if (!target) return [];
+    return questions.filter(
+      q => q.id !== questionId && 
+           q.approvalStatus !== 'trash' &&
+           (q.lessonId === target.lessonId || target.similarQuestionIds?.includes(q.id))
+    );
+  };
+
+  const getClassroomById = (classroomId: string): Classroom | undefined => {
+    return classrooms.find(c => c.id === classroomId || c.code === classroomId);
+  };
+
+  const getStudentsByClassroom = (classroomId: string): StudentProfile[] => {
+    return students.filter(s => s.classroomId === classroomId || s.classroomCode === classroomId);
+  };
+
+  // Student Actions
+  const recordQuestionAttempt = async (params: {
+    questionId: string;
+    lessonId: string;
+    topicId: string;
+    selectedOptionIndex: number;
+    isCorrect: boolean;
+    isReAttempt?: boolean;
+  }): Promise<QuestionAttempt> => {
+    const studentId = profile?.uid || 'guest-student';
+    const studentEmail = profile?.email || 'student@thptmath360.vn';
+
+    const prevAttempts = attempts.filter(
+      a => a.studentId === studentId && a.questionId === params.questionId
+    );
+
+    const attemptNumber = prevAttempts.length + 1;
+    const reAttemptCount = params.isReAttempt ? (prevAttempts[0]?.reAttemptCount || 0) + 1 : 0;
+
+    const newAttempt: QuestionAttempt = {
+      id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      studentId,
+      studentEmail,
+      questionId: params.questionId,
+      lessonId: params.lessonId,
+      topicId: params.topicId,
+      selectedOptionIndex: params.selectedOptionIndex,
+      isCorrect: params.isCorrect,
+      attemptNumber,
+      reAttemptCount,
+      resolvedAfterReview: params.isCorrect && prevAttempts.some(a => !a.isCorrect),
+      timestamp: new Date().toISOString(),
+    };
+
+    setAttempts(prev => [newAttempt, ...prev]);
+    return newAttempt;
+  };
+
+  const recordExamResult = async (params: {
+    examId: string;
+    examTitle: string;
+    score: number;
+    correctCount: number;
+    totalCount: number;
+    timeSpentSeconds: number;
+    userAnswers: Record<string, number>;
+    verificationStatus?: GradeVerificationStatus;
+  }): Promise<ExamResult> => {
+    const studentId = profile?.uid || 'guest-student';
+    const studentEmail = profile?.email || 'student@thptmath360.vn';
+
+    const newResult: ExamResult = {
+      id: `exr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      examId: params.examId,
+      examTitle: params.examTitle,
+      studentId,
+      studentEmail,
+      score: params.score,
+      correctCount: params.correctCount,
+      totalCount: params.totalCount,
+      timeSpentSeconds: params.timeSpentSeconds,
+      userAnswers: params.userAnswers,
+      verificationStatus: params.verificationStatus || 'server_verified',
+      completedAt: new Date().toISOString(),
+    };
+
+    setExamResults(prev => [newResult, ...prev]);
+    return newResult;
+  };
+
+  const markMistakeResolved = (attemptId: string) => {
+    setAttempts(prev =>
+      prev.map(a => (a.id === attemptId ? { ...a, resolvedAfterReview: true } : a))
+    );
+  };
+
+  // Teacher / Curriculum Actions
+  const updateLesson = async (updatedLesson: Lesson) => {
+    setLessons(prev => prev.map(l => (l.id === updatedLesson.id ? updatedLesson : l)));
+  };
+
+  const addLesson = async (newLessonData: Omit<Lesson, 'id'>) => {
+    const id = `lesson-${Date.now().toString().slice(-4)}`;
+    const newLesson: Lesson = { ...newLessonData, id };
+    setLessons(prev => [...prev, newLesson]);
+  };
+
+  const updateQuestion = async (updatedQuestion: Question) => {
+    // When editing an already approved question, move modified copy to 'pending' to require re-approval!
+    const questionToSave: Question = {
+      ...updatedQuestion,
+      approvalStatus: updatedQuestion.approvalStatus === 'approved' ? 'pending' : (updatedQuestion.approvalStatus || 'pending'),
+      updatedAt: new Date().toISOString(),
+      updatedBy: profile?.displayName || profile?.email || 'Giáo viên'
+    };
+
+    setQuestions(prev => prev.map(q => (q.id === questionToSave.id ? questionToSave : q)));
+  };
+
+  const addQuestion = async (newQuestionData: Omit<Question, 'id'>) => {
+    const id = `Q-USER-${Date.now().toString().slice(-4)}`;
+    const newQuestion: Question = { 
+      ...newQuestionData, 
+      id,
+      approvalStatus: 'pending', // Default to pending review
+      createdAt: new Date().toISOString()
+    };
+    setQuestions(prev => [...prev, newQuestion]);
+  };
+
+  const verifyContent = async (type: 'lesson' | 'question' | 'exam', id: string) => {
+    if (type === 'lesson') {
+      setLessons(prev => prev.map(l => (l.id === id ? { ...l, status: 'verified' as ContentStatus } : l)));
+    } else if (type === 'question') {
+      await approveQuestion(id);
+    } else if (type === 'exam') {
+      setExams(prev => prev.map(e => (e.id === id ? { ...e, status: 'verified' as ContentStatus } : e)));
+    }
+  };
+
+  // Question Workflow Implementation
+  const approveQuestion = async (questionId: string) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === questionId) {
+        return {
+          ...q,
+          approvalStatus: 'approved',
+          status: 'verified',
+          approvedBy: profile?.displayName || 'Tổ trưởng chuyên môn',
+          approvedAt: new Date().toISOString(),
+          rejectedReason: undefined
+        };
+      }
+      return q;
+    }));
+  };
+
+  const rejectQuestion = async (questionId: string, reason: string) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === questionId) {
+        return {
+          ...q,
+          approvalStatus: 'rejected',
+          status: 'sample_needs_review',
+          rejectedReason: reason,
+          updatedAt: new Date().toISOString(),
+          updatedBy: profile?.displayName || 'Giáo viên duyệt'
+        };
+      }
+      return q;
+    }));
+  };
+
+  const moveToTrashQuestion = async (questionId: string) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === questionId) {
+        return {
+          ...q,
+          approvalStatus: 'trash',
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return q;
+    }));
+  };
+
+  const restoreQuestion = async (questionId: string) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === questionId) {
+        return {
+          ...q,
+          approvalStatus: 'pending', // Restore to pending review
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return q;
+    }));
+  };
+
+  const deleteQuestionPermanently = async (questionId: string): Promise<{ success: boolean; error?: string }> => {
+    // Check if question was ever used in an existing exam or result
+    const isUsedInExam = exams.some(e => e.questionIds.includes(questionId));
+    const isUsedInAttempts = attempts.some(a => a.questionId === questionId);
+
+    if (isUsedInExam || isUsedInAttempts) {
+      return {
+        success: false,
+        error: 'Câu hỏi này đã từng được sử dụng trong đề thi hoặc có bài làm học sinh. Để bảo toàn lịch sử khảo thí, hệ thống chỉ cho phép xóa mềm vào thùng rác.'
+      };
+    }
+
+    setQuestions(prev => prev.filter(q => q.id !== questionId));
+    return { success: true };
+  };
+
+  const importWordQuestions = async (parsedQuestions: Omit<Question, 'id' | 'createdAt'>[]): Promise<{ importedCount: number; duplicateCount: number }> => {
+    const existingPrompts = new Set(questions.map(q => q.prompt.trim().toLowerCase().replace(/\s+/g, ' ')));
+    let imported = 0;
+    let duplicate = 0;
+
+    const newItems: Question[] = [];
+
+    parsedQuestions.forEach((q, idx) => {
+      const normalizedPrompt = q.prompt.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (existingPrompts.has(normalizedPrompt)) {
+        duplicate++;
+        return;
+      }
+
+      existingPrompts.add(normalizedPrompt);
+      imported++;
+
+      const newQ: Question = {
+        ...q,
+        id: `Q-DOCX-${Date.now()}-${idx + 1}`,
+        code: q.code || `Q-DOCX-${(questions.length + imported).toString().padStart(3, '0')}`,
+        approvalStatus: 'pending', // Default strictly to pending
+        status: 'sample_needs_review',
+        source: 'docx_import',
+        createdAt: new Date().toISOString(),
+        grade: q.grade || 12
+      };
+
+      newItems.push(newQ);
+    });
+
+    if (newItems.length > 0) {
+      setQuestions(prev => [...prev, ...newItems]);
+    }
+
+    return { importedCount: imported, duplicateCount: duplicate };
+  };
+
+  // Exam Creation with Question Snapshot
+  const createExamWithSnapshot = async (examData: {
+    title: string;
+    code: string;
+    description: string;
+    durationMinutes: number;
+    questionIds: string[];
+    grade?: number;
+  }): Promise<Exam> => {
+    // Only approved questions are permitted in official exams!
+    const snapshots: Record<string, QuestionSnapshot> = {};
+
+    examData.questionIds.forEach(qId => {
+      const target = questions.find(q => q.id === qId);
+      if (target) {
+        snapshots[qId] = {
+          questionId: target.id,
+          code: target.code,
+          prompt: target.prompt,
+          options: [...target.options],
+          correctOptionIndex: target.correctOptionIndex,
+          explanation: target.explanation,
+          difficulty: target.difficulty,
+          lessonCode: target.lessonCode
+        };
+      }
+    });
+
+    const newExam: Exam = {
+      id: `exam-${Date.now().toString().slice(-6)}`,
+      title: examData.title,
+      code: examData.code,
+      description: examData.description,
+      durationMinutes: examData.durationMinutes,
+      totalQuestions: examData.questionIds.length,
+      grade: examData.grade || 12,
+      questionIds: examData.questionIds,
+      questionSnapshots: snapshots,
+      status: 'verified',
+      createdAt: new Date().toISOString()
+    };
+
+    setExams(prev => [newExam, ...prev]);
+    return newExam;
+  };
+
+  // Classroom Management Actions
+  const addClassroom = async (classroomData: Omit<Classroom, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; error?: string; classroom?: Classroom }> => {
+    // Check duplicate code in same academic year
+    const isDuplicate = classrooms.some(
+      c => c.code.toUpperCase() === classroomData.code.toUpperCase() && 
+           c.academicYear === classroomData.academicYear &&
+           c.status !== 'archived'
+    );
+
+    if (isDuplicate) {
+      return {
+        success: false,
+        error: `Mã lớp ${classroomData.code} đã tồn tại trong năm học ${classroomData.academicYear}.`
+      };
+    }
+
+    const newClass: Classroom = {
+      ...classroomData,
+      id: `cls-${classroomData.academicYear.replace(/[^a-zA-Z0-9]/g, '')}-${classroomData.code.toLowerCase()}`,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setClassrooms(prev => [...prev, newClass]);
+    return { success: true, classroom: newClass };
+  };
+
+  const updateClassroom = async (cls: Classroom) => {
+    const updated = { ...cls, updatedAt: new Date().toISOString() };
+    setClassrooms(prev => prev.map(c => (c.id === cls.id ? updated : c)));
+  };
+
+  const archiveClassroom = async (classroomId: string) => {
+    setClassrooms(prev => prev.map(c => (c.id === classroomId ? { ...c, status: 'archived', updatedAt: new Date().toISOString() } : c)));
+  };
+
+  const addStudentsBatch = async (newStudents: Omit<StudentProfile, 'id' | 'createdAt'>[]): Promise<{ addedCount: number; duplicateCount: number; errors: string[] }> => {
+    const existingCodes = new Set(students.map(s => s.studentCode.toUpperCase()));
+    let added = 0;
+    let duplicate = 0;
+    const errors: string[] = [];
+    const validStudents: StudentProfile[] = [];
+
+    newStudents.forEach(item => {
+      const codeUpper = item.studentCode.trim().toUpperCase();
+      if (!codeUpper || !item.fullName.trim()) {
+        errors.push(`Học sinh thiếu thông tin bắt buộc (mã: "${item.studentCode}", tên: "${item.fullName}")`);
+        return;
+      }
+
+      if (existingCodes.has(codeUpper)) {
+        duplicate++;
+        return;
+      }
+
+      existingCodes.add(codeUpper);
+      added++;
+
+      validStudents.push({
+        ...item,
+        id: `std_${codeUpper}`,
+        studentCode: codeUpper,
+        fullName: item.fullName.trim(),
+        hasAccount: !!item.hasAccount,
+        status: 'active',
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    if (validStudents.length > 0) {
+      setStudents(prev => [...prev, ...validStudents]);
+    }
+
+    return { addedCount: added, duplicateCount: duplicate, errors };
+  };
+
+  const transferStudent = async (studentId: string, targetClassroomId: string, targetClassroomCode: string) => {
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        return {
+          ...s,
+          classroomId: targetClassroomId,
+          classroomCode: targetClassroomCode
+        };
+      }
+      return s;
+    }));
+  };
+
+  const createAccountsBatchForClassroom = async (
+    classroomId: string, 
+    studentIds: string[], 
+    defaultPassword = 'ThptMath@2026'
+  ): Promise<{ createdCount: number; existedCount: number; failedCount: number; accounts: any[] }> => {
+    const token = await getIdToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const targetStudents = students.filter(s => studentIds.includes(s.id));
+    let created = 0;
+    let existed = 0;
+    let failed = 0;
+    const generatedAccounts: any[] = [];
+
+    for (const std of targetStudents) {
+      try {
+        const res = await fetch('/api/accounts', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            username: std.studentCode,
+            displayName: std.fullName,
+            role: 'student',
+            classroom: std.classroomCode,
+            password: defaultPassword
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          created++;
+          generatedAccounts.push({
+            username: data.account.username,
+            displayName: data.account.displayName,
+            classroom: data.account.classroom,
+            password: data.initialPasswordProvided
+          });
+
+          // Mark student as having account
+          setStudents(prev => prev.map(s => s.id === std.id ? { ...s, hasAccount: true, accountId: data.account.id } : s));
+        } else if (res.status === 400 && data.error?.includes('đã tồn tại')) {
+          existed++;
+          setStudents(prev => prev.map(s => s.id === std.id ? { ...s, hasAccount: true } : s));
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+      }
+    }
+
+    return { createdCount: created, existedCount: existed, failedCount: failed, accounts: generatedAccounts };
+  };
+
+  return (
+    <DataContext.Provider
+      value={{
+        topics,
+        lessons,
+        questions,
+        exams,
+        attempts,
+        examResults,
+        classrooms,
+        students,
+        loading,
+        getLessonById,
+        getQuestionById,
+        getSimilarQuestions,
+        getClassroomById,
+        getStudentsByClassroom,
+        recordQuestionAttempt,
+        recordExamResult,
+        markMistakeResolved,
+        updateLesson,
+        addLesson,
+        updateQuestion,
+        addQuestion,
+        verifyContent,
+        approveQuestion,
+        rejectQuestion,
+        moveToTrashQuestion,
+        restoreQuestion,
+        deleteQuestionPermanently,
+        importWordQuestions,
+        createExamWithSnapshot,
+        addClassroom,
+        updateClassroom,
+        archiveClassroom,
+        addStudentsBatch,
+        transferStudent,
+        createAccountsBatchForClassroom,
+      }}
+    >
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
+};
+
+export default DataContext;
