@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Sidebar } from './components/Sidebar';
@@ -25,6 +25,10 @@ import {
 function AppContent() {
   const { isAuthenticated, isTeacher, isRootAdmin, loading, profile, logout } = useAuth();
   const { attempts, questions } = useData();
+  // Chỉ hiện màn hình khởi động ở lần tải đầu. Khi đang đăng nhập, giữ nguyên màn hình đăng nhập
+  // để không mất nội dung đã gõ và vẫn hiện được thông báo sai mật khẩu.
+  const bootedRef = useRef(false);
+  if (!loading) bootedRef.current = true;
   const [teacherSub, setTeacherSub] = useState<{ tab: NavTab; sub: string } | null>(null);
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   useEffect(() => {
@@ -124,7 +128,7 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  if (loading) {
+  if (loading && !bootedRef.current) {
     return (
       <div className="min-h-screen bg-blue-950 paper-grid-dark flex flex-col items-center justify-center text-blue-100 gap-4" role="status">
         <BrandMark size={56} className="text-blue-100" />

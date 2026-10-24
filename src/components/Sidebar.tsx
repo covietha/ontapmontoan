@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Thương hiệu */}
         <div className={`h-[4.25rem] shrink-0 flex items-center border-b border-white/10 ${collapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
-          <BrandMark size={36} className="text-blue-100 shrink-0" />
+          <BrandMark size={40} className="ring-2 ring-white/25" />
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="font-display text-[15px] font-semibold text-white truncate">{SCHOOL.name}</div>
@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
                         } ${active ? 'bg-white/12 text-white font-semibold' : 'text-blue-200 hover:bg-white/6 hover:text-white'}`}
                       >
-                        {active && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-rose-500" />}
+                        {active && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-flame-500" />}
                         <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? 'text-white' : 'text-blue-300'}`} aria-hidden="true" />
                         {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
                         {badge !== undefined && (
