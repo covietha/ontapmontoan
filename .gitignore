@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Dữ liệu chạy trên máy (tài khoản, kết quả thi)
+data/store/

@@ -7,7 +7,7 @@ Hệ thống ôn thi tốt nghiệp THPT môn Toán cho học sinh và Tổ Toá
 ```bash
 npm install --legacy-peer-deps
 cp .env.example .env.local   # điền GEMINI_API_KEY nếu dùng tính năng AI
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3000 (dữ liệu lưu ở data/store)
 ```
 
 Tài khoản mẫu (mật khẩu `ThptMath@2026`): `GV01` (giáo viên), `HS12001` (học sinh). Đổi mật khẩu trước khi triển khai thật.
@@ -25,7 +25,8 @@ Tài khoản mẫu (mật khẩu `ThptMath@2026`): `GV01` (giáo viên), `HS1200
 | `src/config` | Cấu hình menu và thanh trạng thái |
 | `src/components` | Các màn hình và thành phần giao diện |
 | `src/context` | Đăng nhập và dữ liệu |
-| `server`, `server.ts` | Máy chủ chấm điểm, tài khoản trường |
+| `server`, `server.ts` | Máy chủ chấm điểm, tài khoản trường (`server/app.ts`); `server/store.ts` lưu vào Firestore hoặc file |
+| `api` | Hàm serverless cho Vercel, sinh bằng `npm run build:api` |
 | `firestore.rules`, `security_spec.md` | Quy tắc bảo mật |
 
-Hướng dẫn triển khai: `DEPLOYMENT_GUIDE.md`.
+Triển khai lên Vercel: `HUONG_DAN_VERCEL.md`. Quy tắc bảo mật Firestore: `DEPLOYMENT_GUIDE.md`.

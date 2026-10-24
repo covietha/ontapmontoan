@@ -1,6 +1,5 @@
-import fs from 'fs';
-import path from 'path';
-import { verifySchoolToken, SERVER_ACCOUNTS } from './accounts';
+import { verifySchoolToken, getAccountById } from './accounts';
+import appletConfig from '../firebase-applet-config.json';
 
 export interface AuthenticatedUser {
   uid: string;
@@ -19,21 +18,8 @@ export interface AuthVerifyResult {
 
 const ROOT_ADMIN_EMAIL = 'viethathd@gmail.com';
 
-// Read Firebase applet configuration
-let firebaseConfig: { projectId: string; apiKey: string } = {
-  projectId: 'extreme-beacon-483d0',
-  apiKey: ''
-};
-
-try {
-  const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-  if (fs.existsSync(configPath)) {
-    const raw = fs.readFileSync(configPath, 'utf8');
-    firebaseConfig = JSON.parse(raw);
-  }
-} catch (e) {
-  console.warn('[server/auth] Could not read firebase-applet-config.json, using fallback values');
-}
+// Cấu hình Firebase được đóng gói cùng mã máy chủ (không đọc file lúc chạy, vì hàm serverless không có file này)
+const firebaseConfig: { projectId: string; apiKey: string } = appletConfig as any;
 
 /**
  * Verify Firebase ID Token or School Session Token on the backend
@@ -71,7 +57,7 @@ export async function verifyFirebaseToken(authHeader?: string): Promise<AuthVeri
       };
     }
 
-    const account = SERVER_ACCOUNTS.find(a => a.id === verified.uid || a.username === verified.username);
+    const account = await getAccountById(verified.uid);
     if (!account) {
       return {
         success: false,

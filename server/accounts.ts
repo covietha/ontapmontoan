@@ -6,8 +6,18 @@ export interface StoredAccountRecord extends SchoolAccount {
   salt: string;
 }
 
-// Server HMAC secret for signing school session tokens
-const SERVER_SECRET = process.env.SESSION_SECRET || 'thpt-math-360-authoritative-salt-key-2026';
+import { store, Doc } from './store';
+
+// Khóa ký phiên đăng nhập. Ở môi trường chạy thật bắt buộc phải đặt SESSION_SECRET,
+// nếu không ai đọc được mã nguồn cũng ký giả được phiên của giáo viên.
+const DEV_SECRET = 'thpt-math-360-authoritative-salt-key-2026';
+function getSecret(): string {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    throw new Error('Máy chủ chưa đặt biến môi trường SESSION_SECRET (xem HUONG_DAN_VERCEL.md).');
+  }
+  return DEV_SECRET;
+}
 
 /**
  * Hash password using PBKDF2 with SHA-512 and random 16-byte salt
@@ -38,7 +48,7 @@ export function verifyPassword(password: string, storedHash: string, salt: strin
 export function createSchoolToken(uid: string, username: string, role: string, durationSeconds: number = 86400 * 7): string {
   const exp = Math.floor(Date.now() / 1000) + durationSeconds;
   const payload = `${uid}:${username}:${role}:${exp}`;
-  const hmac = crypto.createHmac('sha256', SERVER_SECRET).update(payload).digest('hex');
+  const hmac = crypto.createHmac('sha256', getSecret()).update(payload).digest('hex');
   const token = `sch_token_${Buffer.from(payload).toString('base64url')}_${hmac}`;
   return token;
 }
@@ -66,7 +76,7 @@ export function verifySchoolToken(token: string): { valid: boolean; uid?: string
     return { valid: false, error: 'Không thể giải mã dữ liệu phiên' };
   }
 
-  const expectedHmac = crypto.createHmac('sha256', SERVER_SECRET).update(payloadStr).digest('hex');
+  const expectedHmac = crypto.createHmac('sha256', getSecret()).update(payloadStr).digest('hex');
   try {
     const validSig = crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedHmac, 'hex'));
     if (!validSig) {
@@ -92,17 +102,14 @@ export function verifySchoolToken(token: string): { valid: boolean; uid?: string
   };
 }
 
-import fs from 'fs';
-import path from 'path';
-
-// Generate deterministic initial password hashes for seeded school accounts (mật khẩu mặc định: 'ThptMath@2026')
+// Mật khẩu mặc định của các tài khoản mẫu: 'ThptMath@2026'
 const DEFAULT_SEED_PASSWORD = 'ThptMath@2026';
-const seed1 = hashPassword(DEFAULT_SEED_PASSWORD);
-const seed2 = hashPassword(DEFAULT_SEED_PASSWORD);
-const seed3 = hashPassword(DEFAULT_SEED_PASSWORD);
-const seed4 = hashPassword(DEFAULT_SEED_PASSWORD);
-
-const INITIAL_SEEDS: StoredAccountRecord[] = [
+function buildSeeds(): StoredAccountRecord[] {
+  const seed1 = hashPassword(DEFAULT_SEED_PASSWORD);
+  const seed2 = hashPassword(DEFAULT_SEED_PASSWORD);
+  const seed3 = hashPassword(DEFAULT_SEED_PASSWORD);
+  const seed4 = hashPassword(DEFAULT_SEED_PASSWORD);
+  return [
   {
     id: 'sch_acc_gv01',
     username: 'GV01',
@@ -156,59 +163,69 @@ const INITIAL_SEEDS: StoredAccountRecord[] = [
     salt: seed4.salt
   }
 ];
-
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-const ACCOUNTS_FILE_PATH = path.join(DATA_DIR, 'server_accounts.json');
-
-/**
- * Load accounts from persistent file, or fallback to INITIAL_SEEDS
- */
-function loadAccountsFromDisk(): StoredAccountRecord[] {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (fs.existsSync(ACCOUNTS_FILE_PATH)) {
-      const content = fs.readFileSync(ACCOUNTS_FILE_PATH, 'utf8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-    // File not found or empty: initialize with seeds
-    fs.writeFileSync(ACCOUNTS_FILE_PATH, JSON.stringify(INITIAL_SEEDS, null, 2), 'utf8');
-    return [...INITIAL_SEEDS];
-  } catch (err) {
-    console.warn('[server/accounts] Failed to load accounts file, using memory seeds:', err);
-    return [...INITIAL_SEEDS];
-  }
 }
-
-/**
- * Persistently save accounts array to disk
- */
-export function saveAccounts(accounts: StoredAccountRecord[]): void {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(ACCOUNTS_FILE_PATH, JSON.stringify(accounts, null, 2), 'utf8');
-  } catch (err) {
-    console.error('[server/accounts] Failed to write accounts to disk:', err);
-  }
-}
-
-/**
- * Live array of school accounts (persisted to disk)
- */
-export const SERVER_ACCOUNTS: StoredAccountRecord[] = loadAccountsFromDisk();
 
 export interface SchoolAccountConfig {
   teachersCanCreateStudents: boolean;
   defaultStudentPassword?: string;
 }
 
-export const SCHOOL_CONFIG: SchoolAccountConfig = {
+export const DEFAULT_SCHOOL_CONFIG: SchoolAccountConfig = {
   teachersCanCreateStudents: true,
   defaultStudentPassword: DEFAULT_SEED_PASSWORD
 };
+
+const ACCOUNTS = 'schoolAccounts';
+
+let seeding: Promise<void> | null = null;
+/** Nạp tài khoản mẫu một lần khi hệ thống mới chạy lần đầu. */
+function ensureSeeded(): Promise<void> {
+  if (!seeding) {
+    seeding = store
+      .seedIfEmpty(ACCOUNTS, buildSeeds().map((a) => ({ id: a.id, data: a })))
+      .catch((err) => { seeding = null; throw err; });
+  }
+  return seeding;
+}
+
+export async function listAccounts(): Promise<StoredAccountRecord[]> {
+  await ensureSeeded();
+  return (await store.list(ACCOUNTS)) as StoredAccountRecord[];
+}
+
+export async function getAccountById(id: string): Promise<StoredAccountRecord | null> {
+  await ensureSeeded();
+  return (await store.get(ACCOUNTS, id)) as StoredAccountRecord | null;
+}
+
+/** Tìm theo id, mã đăng nhập hoặc email (không phân biệt hoa thường). */
+export async function findAccount(input: string): Promise<StoredAccountRecord | null> {
+  await ensureSeeded();
+  const raw = input.trim();
+  const byId = await store.get(ACCOUNTS, raw.toLowerCase()) || await store.get(ACCOUNTS, raw);
+  if (byId) return byId as StoredAccountRecord;
+  const byUser = await store.where(ACCOUNTS, 'username', raw.toUpperCase());
+  if (byUser[0]) return byUser[0] as StoredAccountRecord;
+  const byEmail = await store.where(ACCOUNTS, 'email', raw.toLowerCase());
+  return (byEmail[0] as StoredAccountRecord) ?? null;
+}
+
+export async function saveAccount(account: StoredAccountRecord): Promise<void> {
+  await ensureSeeded();
+  await store.set(ACCOUNTS, account.id, account as unknown as Doc);
+}
+
+export async function isTeacherAccountEmail(email: string): Promise<boolean> {
+  await ensureSeeded();
+  const matches = await store.where(ACCOUNTS, 'email', email.toLowerCase());
+  return matches.some((a) => a.role === 'teacher');
+}
+
+export async function getSchoolConfig(): Promise<SchoolAccountConfig> {
+  const saved = await store.get('config', 'school');
+  return { ...DEFAULT_SCHOOL_CONFIG, ...(saved || {}) };
+}
+
+export async function saveSchoolConfig(config: SchoolAccountConfig): Promise<void> {
+  await store.set('config', 'school', config as unknown as Doc);
+}
