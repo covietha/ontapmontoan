@@ -1,4 +1,4 @@
-# THPT Trần Hưng Đạo · Ôn tập môn Toán THPT
+# Tổ Toán - THPT Trần Hưng Đạo · Ôn tập môn Toán THPT
 
 Hệ thống ôn tập môn Toán THPT cho học sinh và Tổ Toán: học lý thuyết theo chuyên đề, luyện tập theo dạng, thi thử có bấm giờ (máy chủ chấm điểm), sổ tay lỗi sai, và khu quản lý lớp, ngân hàng câu hỏi, tài khoản cho giáo viên.
 

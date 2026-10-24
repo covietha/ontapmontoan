@@ -132,7 +132,7 @@ function AppContent() {
     return (
       <div className="min-h-screen bg-blue-950 paper-grid-dark flex flex-col items-center justify-center text-blue-100 gap-4" role="status">
         <BrandMark size={56} className="text-blue-100" />
-        <p className="text-sm text-blue-200">Đang mở hệ thống ôn thi {SCHOOL.name}…</p>
+        <p className="text-sm text-blue-200">Đang mở hệ thống ôn tập môn Toán…</p>
       </div>
     );
   }

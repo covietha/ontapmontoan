@@ -72,8 +72,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <BrandMark size={40} className="ring-2 ring-white/25" />
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="font-display text-[15px] font-semibold text-white truncate">{SCHOOL.name}</div>
-              <div className="text-xs text-blue-300 truncate">{SCHOOL.product}</div>
+              <div className="text-xs text-blue-300 truncate">{SCHOOL.dept}</div>
+              <div className="font-display text-base font-semibold text-white truncate">{SCHOOL.school}</div>
             </div>
           )}
           <button

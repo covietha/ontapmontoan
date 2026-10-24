@@ -151,7 +151,9 @@ export const PRACTICE_MODES = {
 } as const;
 
 export const SCHOOL = {
-  name: 'THPT Trần Hưng Đạo',
+  name: 'Tổ Toán - THPT Trần Hưng Đạo',
+  dept: 'Tổ Toán',
+  school: 'THPT Trần Hưng Đạo',
   product: 'Ôn tập môn Toán THPT',
   year: 'Năm học 2026–2027'
 };
