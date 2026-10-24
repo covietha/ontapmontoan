@@ -4,7 +4,7 @@ Giao diện (Vite) và máy chủ chấm thi (Express) cùng chạy trên Vercel
 
 ## 1. Tạo khóa dịch vụ Firebase (làm một lần)
 
-1. Vào [Firebase Console](https://console.firebase.google.com/) › dự án `extreme-beacon-483d0`.
+1. Vào [Firebase Console](https://console.firebase.google.com/) › dự án `thpt-tran-hung-dao-math`.
 2. Biểu tượng bánh răng › **Project settings** › tab **Service accounts**.
 3. Nhấn **Generate new private key** › tải về một tệp `.json`.
 4. Giữ tệp này kín. Không đưa vào GitHub, không gửi qua tin nhắn.
@@ -42,7 +42,7 @@ Chỉ cần nếu dùng nút "Cổng quản trị" (đăng nhập Google của q
 | --- | --- |
 | `storage` là `memory` | Thiếu hoặc sai `FIREBASE_SERVICE_ACCOUNT`; tạo tài khoản báo lỗi 503. |
 | Đăng nhập báo lỗi `SESSION_SECRET` | Chưa đặt `SESSION_SECRET`. |
-| `PERMISSION_DENIED` trong log hàm | Khóa dịch vụ thuộc dự án khác với `extreme-beacon-483d0`. |
+| `PERMISSION_DENIED` trong log hàm | Khóa dịch vụ thuộc dự án khác với `thpt-tran-hung-dao-math`. |
 
 ## Phát triển
 

@@ -162,16 +162,14 @@ import path from "path";
 
 // firebase-applet-config.json
 var firebase_applet_config_default = {
-  projectId: "extreme-beacon-483d0",
-  appId: "1:682323355817:web:398422baea2ba428b5e1b8",
-  apiKey: "AIzaSyAOpuTdwoVYmF6IMg6a1UNP5gpmaRu-yVc",
-  authDomain: "extreme-beacon-483d0.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-thptmath360-20eebd27-97f9-4350-9af7-ad32af22ffcf",
-  storageBucket: "extreme-beacon-483d0.firebasestorage.app",
-  messagingSenderId: "682323355817",
-  measurementId: "",
-  oAuthClientId: "682323355817-jttib2lvmr98clssk9gnghq4l2tdhk7u.apps.googleusercontent.com",
-  recaptchaSiteKey: ""
+  projectId: "thpt-tran-hung-dao-math",
+  appId: "1:443673500107:web:1411c409a6513177343e4e",
+  apiKey: "AIzaSyA2TwxyNYuRZyTi2PLsF1RRae0nvraN7qI",
+  authDomain: "thpt-tran-hung-dao-math.firebaseapp.com",
+  firestoreDatabaseId: "(default)",
+  storageBucket: "thpt-tran-hung-dao-math.firebasestorage.app",
+  messagingSenderId: "443673500107",
+  measurementId: "G-E2BGWXKDQJ"
 };
 
 // server/store.ts

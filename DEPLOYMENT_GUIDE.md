@@ -5,8 +5,8 @@ Tài liệu này hướng dẫn chi tiết quy trình triển khai có kiểm so
 ---
 
 ## 1. THÔNG TIN HỆ THỐNG
-* **Firebase Project ID:** `extreme-beacon-483d0`
-* **Firestore Database ID:** `ai-studio-thptmath360-20eebd27-97f9-4350-9af7-ad32af22ffcf`
+* **Firebase Project ID:** `thpt-tran-hung-dao-math`
+* **Firestore Database ID:** `(default)`
 * **Tệp quy tắc cần triển khai:** `DRAFT_firestore.rules` (nằm ở thư mục gốc của dự án)
 * **Tài khoản quản trị gốc (Root Admin):** `viethathd@gmail.com` (phải là email đã xác minh của Google)
 
@@ -17,10 +17,10 @@ Tài liệu này hướng dẫn chi tiết quy trình triển khai có kiểm so
 Trước khi thực hiện bất kỳ thay đổi nào, hãy sao lưu cấu hình quy tắc hiện tại:
 
 1. Đăng nhập vào [Firebase Console](https://console.firebase.google.com/) bằng tài khoản quản trị `viethathd@gmail.com`.
-2. Chọn dự án: **`extreme-beacon-483d0`**.
+2. Chọn dự án: **`thpt-tran-hung-dao-math`**.
 3. Tại menu bên trái, vào mục **Build** ➜ **Firestore Database**.
 4. Tại thanh công cụ trên cùng của trang Firestore, kiểm tra mục chọn Database:
-   * Chuyển sang đúng cơ sở dữ liệu: **`ai-studio-thptmath360-20eebd27-97f9-4350-9af7-ad32af22ffcf`**.
+   * Chuyển sang đúng cơ sở dữ liệu: **`(default)`**.
 5. Nhấp vào tab **Rules** (Quy tắc).
 6. **Sao lưu:**
    * Chọn toàn bộ mã trong khung soạn thảo (`Ctrl + A` hoặc `Cmd + A`), sao chép (`Ctrl + C`).
@@ -33,7 +33,7 @@ Trước khi thực hiện bất kỳ thay đổi nào, hãy sao lưu cấu hìn
 
 1. Mở tệp `DRAFT_firestore.rules` trong dự án THPT MATH 360.
 2. Sao chép toàn bộ nội dung trong tệp `DRAFT_firestore.rules`.
-3. Quay lại trình duyệt tại tab **Rules** của cơ sở dữ liệu Firestore (`ai-studio-thptmath360-20eebd27-97f9-4350-9af7-ad32af22ffcf`).
+3. Quay lại trình duyệt tại tab **Rules** của cơ sở dữ liệu Firestore (`(default)`).
 4. Xóa toàn bộ nội dung cũ trong khung soạn thảo trên Console và dán nội dung mới từ `DRAFT_firestore.rules` vào.
 5. Nhấp vào nút **Publish** (Phát hành) ở góc trên bên phải khung soạn thảo.
 6. Chờ thông báo xác nhận quy tắc đã được phát hành thành công (thường mất 2 - 5 giây để có hiệu lực trên toàn cầu).

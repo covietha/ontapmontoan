@@ -665,7 +665,7 @@ export async function runComprehensiveSecurityTests() {
     // -------------------------------------------------------------------------
     // NHÓM 3: KIỂM THỬ TRỰC TIẾP TRÊN GOOGLE CLOUD FIRESTORE PRODUCTION
     // -------------------------------------------------------------------------
-    console.log('\n>>> [NHÓM 3] KIỂM THỬ TRÊN GOOGLE CLOUD FIRESTORE THẬT (extreme-beacon-483d0)');
+    console.log('\n>>> [NHÓM 3] KIỂM THỬ TRÊN GOOGLE CLOUD FIRESTORE THẬT (thpt-tran-hung-dao-math)');
 
     // 1. Read topics
     try {
