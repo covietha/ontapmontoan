@@ -106,7 +106,7 @@ export const LoginScreen: React.FC = () => {
 
       {/* Bên phải: biểu mẫu */}
       <main className="relative flex flex-col justify-center px-5 py-10 sm:px-10 bg-[radial-gradient(ellipse_at_top_right,rgb(232_67_15/0.07),transparent_55%)]">
-        <div className="w-full max-w-[26rem] mx-auto">
+        <div className="w-full max-w-[28rem] mx-auto">
           <div className="lg:hidden flex items-center gap-3 mb-7">
             <BrandMark size={52} glow />
             <div className="leading-tight">
@@ -115,9 +115,9 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] bg-white border border-slate-200 shadow-[0_24px_60px_-24px_rgb(20_28_44/0.35),0_2px_6px_rgb(20_28_44/0.06)] p-6 sm:p-8">
-            <h2 className="font-display text-3xl font-semibold text-slate-900">Đăng nhập</h2>
-            <p className="mt-1 text-sm text-slate-600">Dùng tài khoản do nhà trường hoặc Tổ Toán cấp.</p>
+          <div className="rounded-[1.75rem] bg-white border border-slate-200 shadow-[0_24px_60px_-24px_rgb(20_28_44/0.35),0_2px_6px_rgb(20_28_44/0.06)] p-6 sm:p-9">
+            <h2 className="font-display text-4xl font-semibold text-slate-900">Đăng nhập</h2>
+            <p className="mt-1.5 text-base text-slate-600">Dùng tài khoản do nhà trường hoặc Tổ Toán cấp.</p>
 
             <div role="tablist" aria-label="Loại tài khoản" className="seg mt-6">
               {([
@@ -138,7 +138,7 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             {errorMessage && (
-              <div role="alert" className="mt-5 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-2">
+              <div role="alert" className="mt-5 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-base flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" aria-hidden="true" />
                 <span>{errorMessage}</span>
               </div>
@@ -146,11 +146,11 @@ export const LoginScreen: React.FC = () => {
 
             <form onSubmit={handleLoginSubmit} className="mt-5 space-y-4">
               <div>
-                <label htmlFor="login-username" className="block text-sm font-medium text-slate-800 mb-1.5 ml-1">
+                <label htmlFor="login-username" className="block text-base font-medium text-slate-800 mb-2 ml-1">
                   {activePortal === 'student' ? 'Mã học sinh' : 'Mã giáo viên'}
                 </label>
                 <div className="relative">
-                  <User className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-username"
                     type="text"
@@ -166,9 +166,9 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="login-password" className="block text-sm font-medium text-slate-800 mb-1.5 ml-1">Mật khẩu</label>
+                <label htmlFor="login-password" className="block text-base font-medium text-slate-800 mb-2 ml-1">Mật khẩu</label>
                 <div className="relative">
-                  <Key className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <Key className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
@@ -191,25 +191,25 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               <button type="submit" disabled={loading} className="btn-flame !mt-6">
-                <Lock className="w-[18px] h-[18px]" aria-hidden="true" />
+                <Lock className="w-5 h-5" aria-hidden="true" />
                 <span>{loading ? 'Đang đăng nhập…' : 'Đăng nhập'}</span>
-                {!loading && <ArrowRight className="w-[18px] h-[18px]" aria-hidden="true" />}
+                {!loading && <ArrowRight className="w-5 h-5" aria-hidden="true" />}
               </button>
             </form>
 
-            <div className="my-5 flex items-center gap-3 text-xs text-slate-500" aria-hidden="true">
+            <div className="my-5 flex items-center gap-3 text-sm text-slate-500" aria-hidden="true">
               <span className="h-px flex-1 bg-slate-200" />
               <span>hoặc</span>
               <span className="h-px flex-1 bg-slate-200" />
             </div>
 
             <button type="button" onClick={() => setShowAdminModal(true)} className="btn-pill">
-              <ShieldCheck className="w-[18px] h-[18px] text-blue-700" aria-hidden="true" />
+              <ShieldCheck className="w-5 h-5 text-blue-700" aria-hidden="true" />
               Đăng nhập quản trị viên
             </button>
           </div>
 
-          <p className="mt-5 px-2 text-center text-sm text-slate-600 leading-relaxed">
+          <p className="mt-5 px-2 text-center text-base text-slate-600 leading-relaxed">
             Quên mật khẩu hoặc chưa có tài khoản? Liên hệ Văn phòng Tổ Toán để được cấp lại.
           </p>
         </div>
@@ -219,7 +219,7 @@ export const LoginScreen: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-title">
           <div className="bg-white rounded-[1.75rem] max-w-sm w-full p-6 shadow-2xl space-y-4 text-slate-900">
             <div className="flex items-start justify-between gap-3">
-              <h3 id="admin-title" className="font-display text-xl font-semibold flex items-center gap-2">
+              <h3 id="admin-title" className="font-display text-2xl font-semibold flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-blue-700" aria-hidden="true" />
                 Đăng nhập quản trị viên
               </h3>
@@ -228,12 +228,12 @@ export const LoginScreen: React.FC = () => {
               </button>
             </div>
 
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-base text-slate-600 leading-relaxed">
               Dành cho quản trị viên hệ thống. Máy chủ sẽ xác thực tài khoản Google của quản trị viên gốc <span className="font-mono text-slate-900 font-medium">viethathd@gmail.com</span>.
             </p>
 
             {adminError && (
-              <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm">{adminError}</div>
+              <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-base">{adminError}</div>
             )}
 
             <button type="button" onClick={handleGoogleAdminLogin} disabled={loadingGoogle} className="btn-pill btn-pill-dark">
