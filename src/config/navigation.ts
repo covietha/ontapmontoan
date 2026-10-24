@@ -152,7 +152,7 @@ export const PRACTICE_MODES = {
 
 export const SCHOOL = {
   name: 'THPT Trần Hưng Đạo',
-  product: 'Ôn thi Toán 360',
+  product: 'Ôn tập môn Toán THPT',
   year: 'Năm học 2026–2027'
 };
 

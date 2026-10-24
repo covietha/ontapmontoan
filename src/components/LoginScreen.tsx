@@ -63,36 +63,42 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] bg-[var(--paper)]">
-      {/* Bên trái: huy hiệu trường là điểm nhấn duy nhất, đồ thị hàm số chỉ làm nền */}
+      {/* Bên trái: huy hiệu gọn ở góc, đồ thị hàm số làm hình chính */}
       <section className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-blue-950 text-blue-100 p-12 xl:p-16">
         <div className="absolute inset-0 paper-grid-dark opacity-80" aria-hidden="true" />
         <div
-          className="absolute -left-28 top-[14%] w-[36rem] h-[36rem] rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(closest-side, rgb(232 67 15 / 0.30), transparent)' }}
+          className="absolute -left-20 -top-20 w-[26rem] h-[26rem] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(closest-side, rgb(232 67 15 / 0.22), transparent)' }}
           aria-hidden="true"
         />
-        <svg viewBox="0 0 520 300" className="absolute right-[-5rem] top-24 w-[32rem] opacity-[0.14] pointer-events-none" aria-hidden="true">
-          <g stroke="#fff" strokeWidth="1.2">
+
+        <div className="relative flex items-center gap-3.5">
+          <BrandMark size={52} glow />
+          <div className="leading-tight">
+            <div className="font-display text-xl font-semibold text-white">{SCHOOL.name}</div>
+            <div className="text-sm text-blue-200">Hệ thống ôn tập môn Toán THPT</div>
+          </div>
+        </div>
+
+        <svg viewBox="0 0 520 300" className="relative w-full max-w-xl self-center my-8" role="img" aria-label="Đồ thị hàm số bậc ba có cực đại và cực tiểu">
+          <g stroke="rgb(255 255 255 / 0.35)" strokeWidth="1.2">
             <line x1="20" y1="170" x2="505" y2="170" />
             <line x1="260" y1="285" x2="260" y2="15" />
           </g>
-          <path d="M 98 282 Q 150 60 200 71 T 260 170 T 320 269 Q 370 280 422 58" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-          <line x1="250" y1="269" x2="440" y2="269" stroke="#fff" strokeWidth="2" strokeDasharray="6 5" />
+          <path d="M500 170l-9-4v8zM260 14l-4 9h8z" fill="rgb(255 255 255 / 0.5)" />
+          <path d="M 98 282 Q 150 60 200 71 T 260 170 T 320 269 Q 370 280 422 58" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+          <line x1="250" y1="269" x2="440" y2="269" stroke="#ff8a63" strokeWidth="2" strokeDasharray="6 5" />
+          <circle cx="320" cy="269" r="5.5" fill="#ff8a63" />
+          <circle cx="200" cy="71" r="5.5" fill="none" stroke="#ff8a63" strokeWidth="2" />
+          <text x="345" y="292" fill="#ffc2ad" fontSize="15" fontFamily="Newsreader, serif" fontStyle="italic">f′(x) = 0</text>
+          <text x="212" y="62" fill="#ffc2ad" fontSize="15" fontFamily="Newsreader, serif" fontStyle="italic">cực đại</text>
         </svg>
 
-        <div className="relative text-sm text-blue-200 tracking-wide">Quảng Trị · {SCHOOL.year}</div>
-
-        <div className="relative">
-          <BrandMark size={300} glow />
-          <h1 className="mt-8 font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.1] whitespace-nowrap">THPT Trần Hưng Đạo</h1>
-          <p className="mt-2 text-lg text-blue-100">Hệ thống ôn thi tốt nghiệp môn Toán</p>
-        </div>
-
-        <div className="relative max-w-lg">
-          <p className="font-display text-xl text-white leading-snug">
+        <div className="relative max-w-xl">
+          <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.12]">
             Ôn đúng chỗ còn yếu, vào phòng thi tự tin hơn.
-          </p>
-          <p className="mt-3 text-base text-blue-200 leading-relaxed">
+          </h1>
+          <p className="mt-4 text-base text-blue-200 leading-relaxed max-w-lg">
             Mỗi câu làm sai được dẫn về bài lý thuyết tương ứng. Điểm thi thử do máy chủ chấm, giáo viên theo dõi được tiến bộ của từng em.
           </p>
         </div>
@@ -101,10 +107,12 @@ export const LoginScreen: React.FC = () => {
       {/* Bên phải: biểu mẫu */}
       <main className="relative flex flex-col justify-center px-5 py-10 sm:px-10 bg-[radial-gradient(ellipse_at_top_right,rgb(232_67_15/0.07),transparent_55%)]">
         <div className="w-full max-w-[26rem] mx-auto">
-          <div className="lg:hidden flex flex-col items-center text-center mb-7">
-            <BrandMark size={88} glow />
-            <div className="mt-3 font-display text-2xl font-semibold text-slate-900">THPT Trần Hưng Đạo</div>
-            <div className="text-sm text-slate-600">Hệ thống ôn thi tốt nghiệp môn Toán</div>
+          <div className="lg:hidden flex items-center gap-3 mb-7">
+            <BrandMark size={52} glow />
+            <div className="leading-tight">
+              <div className="font-display text-xl font-semibold text-slate-900">{SCHOOL.name}</div>
+              <div className="text-sm text-slate-600">Hệ thống ôn tập môn Toán THPT</div>
+            </div>
           </div>
 
           <div className="rounded-[1.75rem] bg-white border border-slate-200 shadow-[0_24px_60px_-24px_rgb(20_28_44/0.35),0_2px_6px_rgb(20_28_44/0.06)] p-6 sm:p-8">
