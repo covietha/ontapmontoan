@@ -136,7 +136,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
           {/* Status filter */}
           <div className="inline-flex flex-wrap max-w-full rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
             <button
@@ -169,7 +169,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
           <select
             value={filterTopic}
             onChange={(e) => setFilterTopic(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 focus:outline-none"
+            className="max-w-full min-w-0 px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 focus:outline-none"
           >
             <option value="all">Tất cả chuyên đề</option>
             {topics.map(t => (
