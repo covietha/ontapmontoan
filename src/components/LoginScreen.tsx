@@ -65,7 +65,7 @@ export const LoginScreen: React.FC = () => {
   return (
     <div className="login-root min-h-screen grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] bg-[var(--paper)]">
       {/* Bên trái: huy hiệu gọn ở góc, đồ thị hàm số làm hình chính */}
-      <section className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-blue-950 text-blue-100 p-12 xl:p-16">
+      <section className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-blue-950 text-blue-100 px-12 xl:px-16 pt-4 pb-10 xl:pb-12">
         <div className="absolute inset-0 paper-grid-dark opacity-80" aria-hidden="true" />
         <div
           className="absolute -left-20 -top-20 w-[26rem] h-[26rem] rounded-full pointer-events-none"
