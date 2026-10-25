@@ -14,6 +14,7 @@ import {
   saveSchoolConfig
 } from './accounts';
 import { store, StorageNotConfiguredError } from './store';
+import { chatConfigured, isChatEnabled, setChatEnabled, usageLeft, bumpUsage, cleanMessages, askGemini, ChatUpstreamError, DAILY_LIMIT } from './chat';
 import { validId, cleanTopic, cleanLesson, listCurriculum, saveCurriculum, tombstoneCurriculum } from './curriculum';
 import {
   validateExamInput,
@@ -408,6 +409,42 @@ export async function createExpressApp() {
   };
   curriculumRoute('topic');
   curriculumRoute('lesson');
+
+  /* ───────────── Trợ lý Toán (chatbox) ───────────── */
+
+  app.get('/api/chat/status', wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+    const enabled = await isChatEnabled();
+    return res.json({ configured: chatConfigured(), enabled, available: enabled && chatConfigured(), remaining: await usageLeft(r.user.uid), dailyLimit: DAILY_LIMIT });
+  }));
+
+  app.put('/api/chat/config', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    await setChatEnabled(req.body?.enabled !== false, user.email);
+    return res.json({ enabled: await isChatEnabled() });
+  }));
+
+  app.post('/api/chat', wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+    if (!chatConfigured()) return res.status(503).json({ error: 'Trợ lý Toán chưa được bật. Thầy cô cần thêm khóa GEMINI_API_KEY trên máy chủ.' });
+    if (!(await isChatEnabled())) return res.status(403).json({ error: 'Trợ lý Toán đang tạm tắt.' });
+    const messages = cleanMessages(req.body?.messages);
+    if (!messages) return res.status(400).json({ error: 'Câu hỏi không hợp lệ.' });
+    const left = await usageLeft(r.user.uid);
+    if (left <= 0) return res.status(429).json({ error: `Em đã dùng hết ${DAILY_LIMIT} câu hỏi hôm nay. Mai em hỏi tiếp nhé.`, remaining: 0 });
+    const context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 1500) : '';
+    try {
+      const reply = await askGemini(messages, context);
+      await bumpUsage(r.user.uid);
+      return res.json({ reply, remaining: left - 1 });
+    } catch (e) {
+      if (e instanceof ChatUpstreamError && e.status === 429) return res.status(503).json({ error: 'Trợ lý đang quá tải. Em thử lại sau ít phút nhé.' });
+      return res.status(502).json({ error: 'Không kết nối được trợ lý. Em thử lại sau nhé.' });
+    }
+  }));
 
   // List admins: Accessible to root admin and teachers
   app.get('/api/admins', async (req, res) => {

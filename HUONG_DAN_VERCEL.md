@@ -47,3 +47,12 @@ Chỉ cần nếu dùng nút "Cổng quản trị" (đăng nhập Google của q
 ## Phát triển
 
 `npm run dev` chạy cả giao diện và máy chủ ở cổng 3000; dữ liệu ghi vào thư mục `data/store` (không đưa lên GitHub). Sau khi sửa mã trong `server/`, chạy `npm run build:api` để cập nhật `api/index.js` rồi commit. `npm run build` cũng làm bước này.
+
+## Bật trợ lý Toán (chatbox AI, dùng gói miễn phí của Google Gemini)
+
+1. Vào https://aistudio.google.com/apikey, đăng nhập Gmail, bấm **Create API key** và sao chép khóa.
+2. Trên Vercel: **Settings → Environment Variables**, thêm `GEMINI_API_KEY` = khóa vừa sao chép (chọn Production). Tùy chọn: `CHAT_DAILY_LIMIT` (số câu hỏi mỗi học sinh mỗi ngày, mặc định 20) và `GEMINI_MODEL` (mặc định `gemini-2.5-flash`).
+3. Vào **Deployments → Redeploy** để biến môi trường có hiệu lực.
+4. Mở ứng dụng, bấm nút **Hỏi trợ lý Toán** ở góc phải dưới. Giáo viên có nút **Đang bật / Đang tắt** trong khung chat để bật hoặc tắt cho toàn trường.
+
+Lưu ý: gói miễn phí có giới hạn số lượt hỏi mỗi phút và mỗi ngày của Google; hết lượt thì trợ lý báo "đang quá tải", học sinh thử lại sau. Trợ lý tự ẩn khi học sinh đang làm bài thi thử.

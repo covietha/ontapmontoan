@@ -11,6 +11,7 @@ import ExamRoom from './components/ExamRoom';
 import MistakeNotebook from './components/MistakeNotebook';
 import ProgressReport from './components/ProgressReport';
 import { CurriculumManager } from './components/CurriculumManager';
+import { ChatWidget } from './components/ChatWidget';
 import { ExamManager } from './components/ExamManager';
 import { TeacherManagement } from './components/TeacherManagement';
 import { ClassroomManagement } from './components/ClassroomManagement';
@@ -415,6 +416,7 @@ function AppContent() {
           )}
 
         </main>
+        <ChatWidget context={`Menu: ${statusTitle}`} />
 
         {/* Thanh trạng thái dưới cùng */}
         <footer className="sticky bottom-0 z-20 mt-auto border-t border-slate-200 bg-white text-xs text-slate-600" role="contentinfo">

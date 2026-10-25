@@ -20,6 +20,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Exam, Question } from '../types';
 import MathRenderer from './MathRenderer';
+import { setExamLock } from '../utils/examLock';
 
 /** Kết quả chấm từng câu do máy chủ trả về. */
 interface Detail {
@@ -91,6 +92,12 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
       .map(id => questions.find(q => q.id === id))
       .filter((q): q is Question => q !== undefined);
   }, [activeExam, questions]);
+
+  // Đang làm bài thì ẩn trợ lý Toán để không lộ đáp án
+  useEffect(() => {
+    setExamLock(isInTestMode && !isFinished);
+    return () => setExamLock(false);
+  }, [isInTestMode, isFinished]);
 
   // Timer effect
   useEffect(() => {
