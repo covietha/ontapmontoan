@@ -5,7 +5,7 @@ import { store } from './store';
  * Khóa chỉ nằm ở máy chủ. Mỗi người có hạn mức câu hỏi mỗi ngày để không vượt giới hạn miễn phí.
  */
 
-const MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
+const MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.0-flash'];
 const DAILY_LIMIT = Math.max(1, parseInt(process.env.CHAT_DAILY_LIMIT || '20', 10) || 20);
 
 export const chatConfigured = () => !!process.env.GEMINI_API_KEY;
@@ -70,6 +70,7 @@ export async function askGemini(messages: ChatMessage[], context: string): Promi
     generationConfig: { maxOutputTokens: 2048, temperature: 0.4 }
   });
 
+  const tried: string[] = [];
   let last: ChatUpstreamError = new ChatUpstreamError(502, 'upstream', 'Không có mô hình nào dùng được');
   for (const model of MODELS) {
     let res: Response;
@@ -89,8 +90,13 @@ export async function askGemini(messages: ChatMessage[], context: string): Promi
       let msg = raw.slice(0, 200);
       try { msg = JSON.parse(raw)?.error?.message || msg; } catch { /* giữ nguyên */ }
       console.error('[chat] Gemini lỗi', model, res.status, msg);
-      last = new ChatUpstreamError(res.status, 'upstream', `${model}: HTTP ${res.status} – ${msg}`);
-      if (res.status === 404) continue; // mô hình không có: thử mô hình kế tiếp
+      tried.push(`${model}: HTTP ${res.status}`);
+      last = new ChatUpstreamError(res.status, 'upstream', `${tried.join(' · ')} – ${msg}`);
+      // Mô hình không có (404), quá tải (503, 500) hoặc hết lượt (429): thử mô hình kế tiếp
+      if ([404, 429, 500, 503].includes(res.status)) {
+        if (res.status === 503) await new Promise((r) => setTimeout(r, 700));
+        continue;
+      }
       throw last;
     }
     const data: any = await res.json();

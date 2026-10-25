@@ -685,7 +685,7 @@ async function verifyFirebaseToken(authHeader) {
 }
 
 // server/chat.ts
-var MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+var MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"];
 var DAILY_LIMIT = Math.max(1, parseInt(process.env.CHAT_DAILY_LIMIT || "20", 10) || 20);
 var chatConfigured = () => !!process.env.GEMINI_API_KEY;
 async function isChatEnabled() {
@@ -743,6 +743,7 @@ Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
     contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
     generationConfig: { maxOutputTokens: 2048, temperature: 0.4 }
   });
+  const tried = [];
   let last = new ChatUpstreamError(502, "upstream", "Kh\xF4ng c\xF3 m\xF4 h\xECnh n\xE0o d\xF9ng \u0111\u01B0\u1EE3c");
   for (const model of MODELS) {
     let res;
@@ -765,8 +766,12 @@ Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
       } catch {
       }
       console.error("[chat] Gemini l\u1ED7i", model, res.status, msg);
-      last = new ChatUpstreamError(res.status, "upstream", `${model}: HTTP ${res.status} \u2013 ${msg}`);
-      if (res.status === 404) continue;
+      tried.push(`${model}: HTTP ${res.status}`);
+      last = new ChatUpstreamError(res.status, "upstream", `${tried.join(" \xB7 ")} \u2013 ${msg}`);
+      if ([404, 429, 500, 503].includes(res.status)) {
+        if (res.status === 503) await new Promise((r) => setTimeout(r, 700));
+        continue;
+      }
       throw last;
     }
     const data = await res.json();
