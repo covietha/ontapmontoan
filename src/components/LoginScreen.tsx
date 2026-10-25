@@ -62,7 +62,7 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] bg-[var(--paper)]">
+    <div className="login-root min-h-screen grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] bg-[var(--paper)]">
       {/* Bên trái: huy hiệu gọn ở góc, đồ thị hàm số làm hình chính */}
       <section className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-blue-950 text-blue-100 p-12 xl:p-16">
         <div className="absolute inset-0 paper-grid-dark opacity-80" aria-hidden="true" />
@@ -150,7 +150,7 @@ export const LoginScreen: React.FC = () => {
                   {activePortal === 'student' ? 'Mã học sinh' : 'Mã giáo viên'}
                 </label>
                 <div className="relative">
-                  <User className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-username"
                     type="text"
@@ -168,7 +168,7 @@ export const LoginScreen: React.FC = () => {
               <div>
                 <label htmlFor="login-password" className="block text-sm font-medium text-slate-800 mb-1.5 ml-1">Mật khẩu</label>
                 <div className="relative">
-                  <Key className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <Key className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
