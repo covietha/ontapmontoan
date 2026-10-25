@@ -109,8 +109,8 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: 'teacher_review', audience: 'teacher', label: 'Kiểm duyệt học liệu',
     title: 'Kiểm duyệt học liệu',
-    description: 'Xem lại học liệu đang chờ duyệt.',
-    section: 'Học liệu', icon: ClipboardCheck, tone: '#a35200', hidden: true
+    description: 'Duyệt học liệu đang chờ và soạn thêm câu hỏi mới.',
+    section: 'Học liệu', icon: ClipboardCheck, tone: '#a35200'
   },
   {
     id: 'teacher_results', audience: 'teacher', label: 'Kết quả thi',

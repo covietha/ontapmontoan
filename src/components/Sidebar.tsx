@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               <ul className="space-y-0.5">
                 {g.items.map(item => {
-                  const active = activeTab === item.id || (item.id === 'teacher_curriculum' && activeTab === 'teacher_review');
+                  const active = activeTab === item.id;
                   const Icon = item.icon;
                   const badge = badges[item.id];
                   return (
