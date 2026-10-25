@@ -88,7 +88,7 @@ export const LoginScreen: React.FC = () => {
             Ôn đúng chỗ còn yếu, vào phòng thi tự tin hơn.
           </h1>
           <p className="mt-4 text-base text-blue-200 leading-relaxed max-w-lg">
-            Mỗi câu làm sai được dẫn về bài lý thuyết tương ứng. Điểm thi thử do máy chủ chấm, giáo viên theo dõi được tiến bộ của từng em.
+            Hệ thống được phát triển bởi thầy giáo Nguyễn Văn Đăng
           </p>
         </div>
       </section>
