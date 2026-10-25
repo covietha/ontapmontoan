@@ -356,3 +356,6 @@ select {
   --text-4xl: 1.9rem;
   --text-5xl: 2.45rem;
 }
+
+/* Công thức toán lớn hơn một chút so với chữ thường để học sinh dễ đọc */
+.math-content .katex { font-size: 1.12em; }

@@ -93,7 +93,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
             </span>
             <h2 className="text-xl font-bold text-slate-900">Kho lý thuyết & công thức trọng tâm</h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Tổng hợp lý thuyết chuẩn theo chương trình Toán THPT, công thức giải nhanh, ví dụ từng bước và các bẫy sai kinh điển.
           </p>
         </div>
@@ -106,7 +106,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm bài học, công thức, mã bài..."
-            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
         </div>
       </div>
@@ -134,7 +134,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setSelectedTopicId('all')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+          className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
             selectedTopicId === 'all'
               ? 'bg-blue-600 text-white shadow-xs'
               : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -148,7 +148,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
             <button
               key={t.id}
               onClick={() => setSelectedTopicId(t.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                 selectedTopicId === t.id
                   ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -202,10 +202,10 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                       {lesson.formulas.length} công thức
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold mt-1.5 line-clamp-2">
+                  <h3 className="text-base font-bold mt-1.5 line-clamp-2">
                     <MathRenderer content={lesson.title} inline />
                   </h3>
-                  <div className="mt-2 flex items-center gap-2 text-[13px] text-slate-500">
+                  <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
                     <span className="line-clamp-2"><MathRenderer content={lesson.objectives[0] || ''} inline /></span>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   <span className="font-mono text-xs font-bold px-2 py-1 rounded-md bg-blue-100 text-blue-800">
                     {activeLesson.lessonCode}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-sm text-slate-500">
                     Chuyên đề: <strong className="text-slate-700">{currentTopic?.title}</strong>
                   </span>
                   {activeLesson.status !== 'verified' && (
@@ -243,18 +243,18 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   )}
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                   <MathRenderer content={activeLesson.title} inline />
                 </h2>
               </div>
 
               {/* Objectives */}
               <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100 space-y-2">
-                <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="text-base font-bold text-blue-900 tracking-wide flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-blue-600" />
                   Mục tiêu cần đạt
                 </h4>
-                <ul className="space-y-1.5 text-xs text-blue-950">
+                <ul className="space-y-2.5 text-lg text-blue-950 leading-relaxed">
                   {activeLesson.objectives.map((obj, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-blue-500 font-bold">•</span>
@@ -266,7 +266,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
 
               {/* Key Formulas Section */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
                   <Layers className="w-4 h-4 text-blue-600" />
                   Công thức trọng tâm & Phương pháp giải
                 </h3>
@@ -276,12 +276,12 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                       key={i} 
                       className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-blue-300 transition-all space-y-2"
                     >
-                      <div className="text-sm font-semibold text-slate-700"><MathRenderer content={f.name} inline /></div>
+                      <div className="text-lg font-semibold text-slate-800"><MathRenderer content={f.name} inline /></div>
                       <div className="p-2.5 rounded-lg bg-white border border-slate-100 text-center font-medium overflow-x-auto">
                         <MathRenderer content={`$$${f.latex}$$`} />
                       </div>
                       {f.note && (
-                        <p className="text-[13px] text-slate-500 italic">💡 <MathRenderer content={f.note} inline /></p>
+                        <p className="text-base text-slate-600 italic">💡 <MathRenderer content={f.note} inline /></p>
                       )}
                     </div>
                   ))}
@@ -290,37 +290,37 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
 
               {/* Theory Summary */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-blue-600" />
                   Tóm tắt lý thuyết chi tiết
                 </h3>
-                <div className="p-5 rounded-2xl bg-white border border-slate-200 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-3">
+                <div className="p-5 rounded-2xl bg-white border border-slate-200 text-lg text-slate-800 leading-[1.85] space-y-3">
                   <MathRenderer content={activeLesson.theorySummary} />
                 </div>
               </div>
 
               {/* Step-by-Step Examples */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
                   Ví dụ minh họa có lời giải từng bước
                 </h3>
                 <div className="space-y-4">
                   {activeLesson.stepByStepExamples.map((ex, i) => (
                     <div key={i} className="p-5 rounded-2xl border border-emerald-100 bg-emerald-50/30 space-y-3">
-                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950"><MathRenderer content={ex.title} inline /></h4>
-                      <div className="p-3 bg-white rounded-xl border border-emerald-200/60 text-xs sm:text-sm text-slate-800">
+                      <h4 className="text-lg font-bold text-emerald-950"><MathRenderer content={ex.title} inline /></h4>
+                      <div className="p-3 bg-white rounded-xl border border-emerald-200/60 text-lg text-slate-900 leading-relaxed">
                         <MathRenderer content={ex.problem} />
                       </div>
                       <div className="space-y-1.5 pl-2 border-l-2 border-emerald-400">
                         {ex.solutionSteps.map((step, sIdx) => (
-                          <div key={sIdx} className="text-xs text-slate-700">
+                          <div key={sIdx} className="text-lg text-slate-800 leading-relaxed">
                             <MathRenderer content={step} />
                           </div>
                         ))}
                       </div>
                       {ex.note && (
-                        <p className="text-[13px] text-emerald-800 font-medium">⚠️ {ex.note}</p>
+                        <p className="text-base text-emerald-800 font-medium">⚠️ {ex.note}</p>
                       )}
                     </div>
                   ))}
@@ -329,20 +329,20 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
 
               {/* Common Mistakes (Trọng tâm chống sai bẫy) */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-rose-800 uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-lg font-bold text-rose-800 tracking-wide flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600" />
                   Lỗi sai thường gặp (Bẫy đề thi)
                 </h3>
                 <div className="space-y-3">
                   {activeLesson.commonMistakes.map((m, i) => (
                     <div key={i} className="p-4 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-rose-900">
+                      <div className="flex items-center gap-2 text-lg font-bold text-rose-900">
                         <span>❌ <MathRenderer content={m.mistakeTitle} inline /></span>
                       </div>
-                      <div className="text-xs text-rose-800">
+                      <div className="text-lg text-rose-900 leading-relaxed">
                         <span className="font-semibold">Học sinh hay sai:</span> <MathRenderer content={m.explanation} inline />
                       </div>
-                      <div className="text-xs text-emerald-900 bg-white p-2.5 rounded-lg border border-rose-100">
+                      <div className="text-lg text-emerald-900 leading-relaxed bg-white p-2.5 rounded-lg border border-rose-100">
                         <span className="font-bold text-emerald-700">✔️ Cách khắc phục đúng:</span> <MathRenderer content={m.correction} inline />
                       </div>
                     </div>
@@ -353,10 +353,10 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
               {/* Related Practice Questions Direct Action */}
               <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50 p-5 rounded-2xl">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800">
+                  <h4 className="text-lg font-bold text-slate-800">
                     Luyện tập củng cố ngay bài này
                   </h4>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-base text-slate-600">
                     Có {relatedQuestions.length} câu hỏi liên kết trực tiếp với bài học {activeLesson.lessonCode}
                   </p>
                 </div>
@@ -365,7 +365,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   {relatedQuestions[0] && (
                     <button
                       onClick={() => onStartPracticeQuestion(relatedQuestions[0].id)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-base font-bold shadow-md shadow-blue-500/20 transition-all"
                     >
                       <Target className="w-4 h-4" />
                       Luyện câu hỏi bài này
@@ -374,7 +374,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   {currentTopic && (
                     <button
                       onClick={() => onStartTopicPractice(currentTopic.id)}
-                      className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition-all"
+                      className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-base font-semibold transition-all"
                     >
                       Luyện cả chuyên đề
                     </button>
