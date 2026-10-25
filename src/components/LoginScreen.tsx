@@ -88,7 +88,7 @@ export const LoginScreen: React.FC = () => {
             Hệ thống hỗ trợ ôn tập và thi thử môn Toán THPT
           </h1>
           <p className="mt-4 text-base text-blue-200 leading-relaxed max-w-lg">
-            Hệ thống được phát triển bởi thầy giáo Nguyễn Văn Đăng
+            Hệ thống được phát triển bởi thầy giáo Nguyễn Văn Đăng - Trường THPT Trần Hưng Đạo - Quảng Trị
           </p>
         </div>
       </section>
