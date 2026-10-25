@@ -1,3 +1,4 @@
+import { formatAnswer } from '../utils/fileParsers';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Settings, 
@@ -845,7 +846,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       Phương án trả lời của thí sinh:
                     </h4>
                     <div className="space-y-2">
-                      {Object.entries(selectedResultDetails.userAnswers as Record<string, number>).map(([qId, optIdx], idx) => {
+                      {Object.entries(selectedResultDetails.userAnswers as Record<string, any>).map(([qId, optIdx], idx) => {
                         const targetQ = questions.find(q => q.id === qId);
                         const letters = ['A', 'B', 'C', 'D'];
                         return (
@@ -859,7 +860,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                               </span>
                             </div>
                             <div className="shrink-0 font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 font-mono">
-                              Đã chọn: {letters[optIdx] ?? optIdx}
+                              Bài làm: {formatAnswer(optIdx)}
                             </div>
                           </div>
                         );

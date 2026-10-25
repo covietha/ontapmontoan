@@ -22,7 +22,10 @@ import {
   saveCustomExam,
   deleteCustomExam,
   toPublicExam,
-  resolveExamForGrading
+  resolveExamForGrading,
+  gradeQuestion,
+  sanitizeAnswer,
+  type QuestionOutcome
 } from './exams';
 
 export interface AdminRecord {
@@ -54,10 +57,11 @@ export interface VerifiedExamResultRecord {
   correctCount: number;
   totalCount: number;
   timeSpentSeconds: number;
-  userAnswers: Record<string, number>;
+  userAnswers: Record<string, any>;
   verificationStatus: 'server_verified';
   gradedAt: string;
-  detailedResults: Record<string, { isCorrect: boolean; correctOptionIndex: number; explanation: string }>;
+  detailedResults: Record<string, QuestionOutcome>;
+  essayCount?: number;
   firestoreSync?: {
     synced: boolean;
     documentId: string;
@@ -200,42 +204,40 @@ export async function createExpressApp() {
       return res.status(400).json({ error: 'Cấu trúc bài làm (userAnswers) không hợp lệ (phải là key-value object)' });
     }
 
-    const rawAnswers = (userAnswers || {}) as Record<string, any>;
-    const answerKeys = Object.keys(rawAnswers);
-    if (answerKeys.length > exam.questionIds.length * 3) {
+    const rawAnswers = (userAnswers || {}) as Record<string, unknown>;
+    if (Object.keys(rawAnswers).length > exam.questions.length * 3) {
       return res.status(400).json({ error: 'Số lượng câu trả lời vượt quá giới hạn bất thường của đề thi' });
     }
 
-    // Làm sạch câu trả lời: chỉ giữ số nguyên hợp lệ [0..10]
-    const sanitizedAnswers: Record<string, number> = {};
-    for (const [qId, val] of Object.entries(rawAnswers)) {
-      if (typeof qId === 'string' && typeof val === 'number' && Number.isInteger(val) && val >= 0 && val <= 10) {
-        sanitizedAnswers[qId] = val;
-      }
+    // Chỉ giữ câu trả lời đúng định dạng của từng dạng câu hỏi
+    const sanitizedAnswers: Record<string, any> = {};
+    for (const q of exam.questions) {
+      const a = sanitizeAnswer(q.type, rawAnswers[q.id]);
+      if (a !== undefined) sanitizedAnswers[q.id] = a;
     }
 
     // 6. Chấm điểm độc lập từ đáp án chuẩn phía máy chủ
     // Tuyệt đối KHÔNG tin score, correctCount, totalCount do trình duyệt tự gửi
     let correctCount = 0;
-    const detailedResults: Record<string, { isCorrect: boolean; correctOptionIndex: number; explanation: string }> = {};
+    let earned = 0;
+    let maxPoints = 0;
+    let gradedCount = 0;
+    let essayCount = 0;
+    const detailedResults: Record<string, QuestionOutcome> = {};
 
-    exam.questionIds.forEach(qId => {
-      const selected = sanitizedAnswers[qId];
-      const key = exam.keyOf(qId);
-      if (key) {
-        const isCorrect = typeof selected === 'number' && selected === key.correctOptionIndex;
-        if (isCorrect) correctCount += 1;
-        detailedResults[qId] = {
-          isCorrect,
-          correctOptionIndex: key.correctOptionIndex,
-          explanation: key.explanation
-        };
-      }
+    exam.questions.forEach(q => {
+      const out = gradeQuestion(q, sanitizedAnswers[q.id]);
+      detailedResults[q.id] = out;
+      if (q.type === 'essay') { essayCount += 1; return; }
+      gradedCount += 1;
+      if (out.isCorrect) correctCount += 1;
+      earned += out.points;
+      maxPoints += out.maxPoints;
     });
 
-    const totalCount = exam.questionIds.length;
-    const rawScore = totalCount > 0 ? (correctCount / totalCount) * 10 : 0;
-    const score = Math.round(rawScore * 10) / 10;
+    const totalCount = gradedCount;
+    const rawScore = maxPoints > 0 ? (earned / maxPoints) * 10 : 0;
+    const score = Math.round(rawScore * 100) / 100;
 
     // Chuẩn hóa thời gian làm bài (tối thiểu 1 giây, tối đa duration + 30 phút gia hạn)
     const maxAllowedSeconds = exam.durationMinutes * 60 + 1800;
@@ -256,7 +258,8 @@ export async function createExpressApp() {
       userAnswers: sanitizedAnswers,
       verificationStatus: 'server_verified',
       gradedAt: new Date().toISOString(),
-      detailedResults
+      detailedResults,
+      essayCount
     };
 
     // 7. Ghi vào sổ cái kết quả chính thức (bắt buộc) và bản công khai cho học sinh trong /examResults

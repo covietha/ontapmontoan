@@ -144,52 +144,68 @@ export function exportAccountsHandoverExcel(accounts: {
  * Tải file văn bản mẫu soạn câu hỏi Word (.docx format guide)
  */
 export function downloadWordQuestionSampleGuide() {
-  const sampleContent = `BỘ CÂU HỎI MẪU ÔN THI TỐT NGHIỆP THPT MÔN TOÁN 2026
+  const sampleContent = `MẪU SOẠN ĐỀ THI TOÁN THPT (cấu trúc đề tốt nghiệp: 3 dạng câu hỏi)
 
-Câu 1: [Nhận biết] [Khối 12] Đạo hàm của hàm số $y = \\frac{2x + 1}{x - 3}$ trên tập xác định là:
-A. $y' = \\frac{-7}{(x-3)^2}$
-B. $y' = \\frac{7}{(x-3)^2}$
-C. $y' = \\frac{-5}{(x-3)^2}$
-D. $y' = \\frac{2}{(x-3)^2}$
+Quy ước chung:
+- Mỗi câu bắt đầu bằng "Câu 1:", "Câu 2:"... Có thể ghi thêm thẻ [Nhận biết] [Thông hiểu] [Vận dụng] [Vận dụng cao] và [Khối 12].
+- Công thức viết trong $...$, ví dụ $y = \\frac{2x + 1}{x - 3}$.
+- Dòng "PHẦN I", "PHẦN II", "PHẦN III", "PHẦN IV" cho hệ thống biết dạng câu hỏi (có thể không ghi, hệ thống tự nhận dạng).
+- Dòng "Đáp án:" và "Lời giải:" nằm cuối mỗi câu.
+
+PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (4 phương án, chọn 1)
+
+Câu 1: [Nhận biết] [Khối 12] Đạo hàm của hàm số $y = x^3$ là:
+A. $y' = 3x^2$
+B. $y' = x^2$
+C. $y' = 3x$
+D. $y' = x^3$
 Đáp án: A
-Lời giải: Áp dụng công thức đạo hàm phân thức bậc nhất trên bậc nhất:
-$y' = \\frac{ad - bc}{(cx+d)^2} = \\frac{2(-3) - 1(1)}{(x-3)^2} = \\frac{-7}{(x-3)^2}$.
-Chọn A.
+Lời giải: Áp dụng $(x^n)' = nx^{n-1}$.
 
-Câu 2: [Thông hiểu] [Khối 12] Cho hàm số $y = f(x)$ có bảng biến thiên trên đoạn [-2; 3]. Giá trị cực đại của hàm số đã cho bằng:
-A. 4
-B. -2
-C. 3
-D. 0
-Đáp án: A
-Lời giải: Dựa vào bảng biến thiên, tại điểm $x = 1$, đạo hàm $f'(x)$ đổi dấu từ dương sang âm, do đó hàm số đạt cực đại tại $x = 1$ và giá trị cực đại $y_{CĐ} = 4$.
-Chọn A.
+PHẦN II. Câu trắc nghiệm đúng sai (mỗi câu có 4 ý a, b, c, d)
 
-Câu 3: [Vận dụng] [Khối 12] Tìm tất cả các giá trị của tham số m để hàm số $y = x^3 - 3mx^2 + 3(m^2 - 1)x$ đạt cực tiểu tại $x = 2$.
-A. $m = 1$
-B. $m = 3$
-C. $m = 2$
-D. Không tồn tại m
-Đáp án: B
-Lời giải: Ta có $y' = 3x^2 - 6mx + 3(m^2 - 1)$. 
-Hàm số đạt cực tiểu tại $x = 2 \\implies y'(2) = 0 \\iff 3(4) - 12m + 3(m^2 - 1) = 0 \\iff 3m^2 - 12m + 9 = 0 \\iff m = 1$ hoặc $m = 3$.
-Thử lại với $y'' = 6x - 6m$:
-- Với $m = 1$: $y''(2) = 6(2) - 6(1) = 6 > 0 \\implies x = 2$ là điểm cực tiểu (thỏa mãn).
-- Với $m = 3$: $y''(2) = 12 - 18 = -6 < 0 \\implies$ cực đại (loại).
-Chọn A.`;
+Câu 2: [Thông hiểu] [Khối 12] Cho hàm số $y = x^3 - 3x$. Xét tính đúng sai của các mệnh đề sau:
+a) Hàm số có đạo hàm $y' = 3x^2 - 3$.
+b) Hàm số đồng biến trên $\\mathbb{R}$.
+c) Hàm số có hai điểm cực trị.
+d) Giá trị cực đại của hàm số bằng $2$.
+Đáp án: a-Đ, b-S, c-Đ, d-Đ
+Lời giải: $y' = 3x^2 - 3$ đổi dấu tại $x = \\pm 1$ nên có hai cực trị, $y_{CĐ} = y(-1) = 2$.
+
+PHẦN III. Câu trả lời ngắn (đáp án là một số)
+
+Câu 3: [Vận dụng] [Khối 12] Giá trị lớn nhất của hàm số $y = -x^2 + 4x + 1$ bằng bao nhiêu?
+Đáp án: 5
+Lời giải: $y = -(x-2)^2 + 5$ nên giá trị lớn nhất bằng $5$.
+
+(Có thể ghi nhiều đáp án chấp nhận, ngăn cách bằng dấu chấm phẩy: Đáp án: 12,5; 12.5)
+
+PHẦN IV. Tự luận (chỉ dùng cho đề lớp 10, lớp 11; giáo viên chấm)
+
+Câu 4: [Vận dụng] [Khối 10] Giải phương trình $x^2 - 5x + 6 = 0$.
+Lời giải: $\\Delta = 1$, nên $x = 2$ hoặc $x = 3$.`;
 
   const blob = new Blob([sampleContent], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'Huong_Dan_Soan_Cau_Hoi_THPT_MATH_360.txt';
+  a.download = 'Mau_Soan_De_Toan_THPT.txt';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
+export type ParsedQType = 'mcq' | 'true_false' | 'short_answer' | 'essay';
+
 export interface ParsedWordQuestion {
+  /** Dạng câu: trắc nghiệm, đúng/sai, trả lời ngắn, tự luận */
+  type: ParsedQType;
+  /** Câu đúng/sai: nội dung 4 ý a, b, c, d và đáp án đúng (true = Đúng) */
+  statements: string[];
+  truths: boolean[];
+  /** Câu trả lời ngắn: các đáp án được chấp nhận */
+  acceptedAnswers: string[];
   questionNumber: number;
   prompt: string;
   options: string[];
@@ -263,18 +279,162 @@ export function parseQuestionText(text: string): {
     };
   }
 
+  const sections = findSections(normalized);
+
   for (let i = 0; i < matches.length; i++) {
     const startIndex = matches[i].index;
     const endIndex = i + 1 < matches.length ? matches[i + 1].index : normalized.length;
-    const block = normalized.substring(startIndex, endIndex).trim();
+    let block = normalized.substring(startIndex, endIndex).trim();
+    // Dòng tiêu đề "PHẦN I/II/III/IV" nằm cuối khối trước: bỏ khỏi nội dung câu
+    block = block.replace(PART_HEADER_LINE, '').trim();
 
-    const parsed = parseSingleQuestionBlock(block, matches[i].number);
+    const parsed = parseBlock(block, matches[i].number, sectionAt(sections, startIndex));
     if (parsed) {
       questions.push(parsed);
     }
   }
 
   return { questions, errors };
+}
+
+
+/* ───────────── Nhận dạng 4 dạng câu hỏi ───────────── */
+
+const PART_HEADER_LINE = /(?:^|\n)[ \t]*PH[ẦA]N\s*(?:IV|III|II|I|[1-4])\b[^\n]*/gi;
+
+function partToType(label: string): ParsedQType {
+  const v = label.toUpperCase();
+  if (v === 'I' || v === '1') return 'mcq';
+  if (v === 'II' || v === '2') return 'true_false';
+  if (v === 'III' || v === '3') return 'short_answer';
+  return 'essay';
+}
+
+function findSections(text: string): { index: number; type: ParsedQType }[] {
+  const out: { index: number; type: ParsedQType }[] = [];
+  const re = /(?:^|\n)[ \t]*PH[ẦA]N\s*(IV|III|II|I|[1-4])\b[^\n]*/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) out.push({ index: m.index, type: partToType(m[1]) });
+  return out;
+}
+
+function sectionAt(sections: { index: number; type: ParsedQType }[], idx: number): ParsedQType | null {
+  let t: ParsedQType | null = null;
+  for (const s of sections) if (s.index <= idx) t = s.type;
+  return t;
+}
+
+/** Đổi "Đúng/Sai/Đ/S" thành true/false */
+function toTruth(token: string): boolean | null {
+  const t = token.trim().toLowerCase();
+  if (t === 'đ' || t === 'đúng' || t === 'd' || t === 'true') return true;
+  if (t === 's' || t === 'sai' || t === 'false') return false;
+  return null;
+}
+
+/** Đọc dòng đáp án đúng/sai: "a-Đ, b-S, c-Đ, d-S", "a) Đúng b) Sai ...", "ĐSĐS", "Đ S Đ S" */
+function parseTruths(answerText: string): boolean[] | null {
+  const labelled: (boolean | null)[] = [null, null, null, null];
+  const re = /\b([a-d])\s*[).:\-=]*\s*(Đúng|Sai|Đ|S)(?![a-zà-ỹ])/gi;
+  let m;
+  while ((m = re.exec(answerText)) !== null) {
+    labelled[m[1].toLowerCase().charCodeAt(0) - 97] = toTruth(m[2]);
+  }
+  if (labelled.every((v) => v !== null)) return labelled as boolean[];
+
+  const letters = answerText
+    .replace(/Đúng/gi, 'Đ').replace(/Sai/gi, 'S')
+    .match(/[ĐSđs]/g);
+  if (letters && letters.length === 4) return letters.map((l) => toTruth(l) as boolean);
+  return null;
+}
+
+function cleanTags(prompt: string): string {
+  return prompt
+    .replace(/\[(?:Nhận biết|Thông hiểu|Vận dụng cao|Vận dụng)\]/gi, '')
+    .replace(/\[(?:Khối|Lớp)\s*(?:10|11|12)\]/gi, '')
+    .replace(/\[(?:Trắc nghiệm|Đúng\s*\/?\s*Sai|ĐS|Trả lời ngắn|TLN|Tự luận)\]/gi, '')
+    .replace(/^(?:Câu|Bài|\[Câu)\s*\d+[\s:.\-\]]+/i, '')
+    .trim();
+}
+
+function detectType(block: string, section: ParsedQType | null): ParsedQType {
+  if (/\[\s*Tự luận\s*\]/i.test(block)) return 'essay';
+  if (/\[\s*(?:Đúng\s*\/?\s*Sai|ĐS)\s*\]/i.test(block)) return 'true_false';
+  if (/\[\s*(?:Trả lời ngắn|TLN)\s*\]/i.test(block)) return 'short_answer';
+  if (/\[\s*Trắc nghiệm\s*\]/i.test(block)) return 'mcq';
+  if (section) return section;
+  if (/(?:^|\n)\s*a[).]\s*[\s\S]*?(?:^|\n)\s*b[).]\s*[\s\S]*?(?:^|\n)\s*c[).]\s*[\s\S]*?(?:^|\n)\s*d[).]/.test(block)) return 'true_false';
+  if (/(?:^|\n|\s)A[).:]\s[\s\S]*(?:\n|\s)B[).:]\s[\s\S]*(?:\n|\s)C[).:]\s[\s\S]*(?:\n|\s)D[).:]\s/.test(block)) return 'mcq';
+  if (/(?:Đáp án|Đ\/A|Kết quả)[\s:.\-]+\S/i.test(block)) return 'short_answer';
+  return 'mcq';
+}
+
+function parseBlock(block: string, qNum: number, section: ParsedQType | null): ParsedWordQuestion | null {
+  const type = detectType(block, section);
+  const base = parseSingleQuestionBlock(block, qNum);
+  if (!base) return null;
+  const empty = { statements: [] as string[], truths: [] as boolean[], acceptedAnswers: [] as string[] };
+
+  if (type === 'mcq') return { ...base, type, ...empty };
+
+  // Tách phần lời giải để không lẫn vào đáp án
+  let explanation = base.explanation;
+  let main = block;
+  const expMatch = /(?:Lời giải|Hướng dẫn giải|HDG)[\s:.\-]+([\s\S]*)$/i.exec(block);
+  if (expMatch) main = block.substring(0, expMatch.index).trim();
+  if (!expMatch) explanation = '';
+
+  if (type === 'essay') {
+    const prompt = cleanTags(main.replace(/(?:Đáp án|Đ\/A)[\s:.\-]+[\s\S]*$/i, ''));
+    return {
+      ...base, type, ...empty, prompt: prompt || base.prompt, options: ['', '', '', ''], correctOptionIndex: -1,
+      explanation: explanation || 'Chưa có hướng dẫn chấm.', needsReview: false, reviewReason: undefined
+    };
+  }
+
+  const ansMatch = /(?:Đáp án|Đ\/A|Kết quả)[\s:.\-]+([^\n]*(?:\n(?!\s*(?:Câu|Bài|Lời giải|HDG))[^\n]*)?)/i.exec(main);
+  const answerText = ansMatch ? ansMatch[1].trim() : '';
+  const beforeAnswer = ansMatch ? main.substring(0, ansMatch.index).trim() : main;
+
+  if (type === 'true_false') {
+    const re = /(?:^|\n)[ \t]*([a-d])[).][ \t]*/g;
+    const marks: { idx: number; len: number; letter: string }[] = [];
+    let m;
+    while ((m = re.exec(beforeAnswer)) !== null) marks.push({ idx: m.index, len: m[0].length, letter: m[1] });
+    const inOrder = marks.length >= 4 && ['a', 'b', 'c', 'd'].every((l, i) => marks[i]?.letter === l);
+    const statements = ['', '', '', ''];
+    let prompt = beforeAnswer;
+    let review = '';
+    if (inOrder) {
+      prompt = beforeAnswer.substring(0, marks[0].idx);
+      for (let i = 0; i < 4; i++) {
+        const end = i < 3 ? marks[i + 1].idx : beforeAnswer.length;
+        statements[i] = beforeAnswer.substring(marks[i].idx + marks[i].len, end).trim();
+      }
+    } else {
+      review = 'Chưa nhận diện đủ 4 ý a), b), c), d)';
+      statements.fill('(cần nhập lại)');
+    }
+    const truths = parseTruths(answerText);
+    if (!truths) review = review ? `${review} • Chưa nhận diện đáp án Đúng/Sai của 4 ý` : 'Chưa nhận diện đáp án Đúng/Sai của 4 ý';
+    return {
+      ...base, type, acceptedAnswers: [], statements, truths: truths || [true, true, true, true],
+      prompt: cleanTags(prompt) || base.prompt, options: ['', '', '', ''], correctOptionIndex: -1,
+      explanation: explanation || 'Lời giải chi tiết đang được cập nhật.',
+      needsReview: !!review, reviewReason: review || undefined
+    };
+  }
+
+  // short_answer
+  const accepted = answerText.split(/[;|]|\s+hoặc\s+/i).map((a) => a.replace(/^\$|\$$/g, '').trim()).filter(Boolean);
+  const review = accepted.length === 0 ? 'Chưa nhận diện đáp án của câu trả lời ngắn' : '';
+  return {
+    ...base, type, statements: [], truths: [], acceptedAnswers: accepted,
+    prompt: cleanTags(beforeAnswer) || base.prompt, options: ['', '', '', ''], correctOptionIndex: -1,
+    explanation: explanation || 'Lời giải chi tiết đang được cập nhật.',
+    needsReview: !!review, reviewReason: review || undefined
+  };
 }
 
 function parseSingleQuestionBlock(block: string, qNum: number): ParsedWordQuestion | null {
@@ -359,6 +519,10 @@ function parseSingleQuestionBlock(block: string, qNum: number): ParsedWordQuesti
   }
 
   return {
+    type: 'mcq',
+    statements: [],
+    truths: [],
+    acceptedAnswers: [],
     questionNumber: qNum,
     prompt: prompt || `Nội dung câu hỏi ${qNum}`,
     options,
@@ -370,4 +534,12 @@ function parseSingleQuestionBlock(block: string, qNum: number): ParsedWordQuesti
     needsReview,
     reviewReason: reviewReason || undefined
   };
+}
+
+/** Hiển thị câu trả lời của học sinh ở mọi dạng câu hỏi: A–D, Đ/S theo từng ý, hoặc chuỗi đã nhập. */
+export function formatAnswer(v: unknown): string {
+  if (typeof v === 'number') return ['A', 'B', 'C', 'D'][v] ?? String(v);
+  if (Array.isArray(v)) return v.map((x, i) => `${'abcd'[i]}-${x === true ? 'Đ' : x === false ? 'S' : '?'}`).join('  ');
+  if (typeof v === 'string' && v.trim()) return v.length > 80 ? `${v.slice(0, 80)}…` : v;
+  return 'Chưa trả lời';
 }

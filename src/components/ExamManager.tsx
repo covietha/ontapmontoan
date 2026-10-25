@@ -9,11 +9,27 @@ import { MathRenderer } from './MathRenderer';
 import { parseDocxFile, downloadWordQuestionSampleGuide } from '../utils/fileParsers';
 import type { QuestionDifficulty } from '../types';
 
+type QType = 'mcq' | 'true_false' | 'short_answer' | 'essay';
+
+const TYPE_INFO: Record<QType, { part: string; short: string }> = {
+  mcq: { part: 'Phần 1: Trắc nghiệm nhiều phương án', short: 'Trắc nghiệm' },
+  true_false: { part: 'Phần 2: Trắc nghiệm đúng/sai', short: 'Đúng/Sai' },
+  short_answer: { part: 'Phần 3: Trả lời ngắn', short: 'Trả lời ngắn' },
+  essay: { part: 'Phần 4: Tự luận', short: 'Tự luận' }
+};
+const TYPE_ORDER: QType[] = ['mcq', 'true_false', 'short_answer', 'essay'];
+/** Cấu trúc đề tốt nghiệp: 12 câu Phần 1, 4 câu Phần 2, 6 câu Phần 3 */
+const STANDARD_12 = { mcq: 12, true_false: 4, short_answer: 6, essay: 0 } as const;
+
 interface DraftQuestion {
   key: string;
+  type: QType;
   prompt: string;
   options: string[];
   correctOptionIndex: number; // -1 = chưa chọn
+  statements: string[]; // đúng/sai: 4 ý
+  truths: (boolean | null)[]; // đúng/sai: đáp án từng ý
+  acceptedText: string; // trả lời ngắn: các đáp án, ngăn cách bằng dấu ;
   explanation: string;
   difficulty: QuestionDifficulty;
   lessonCode?: string;
@@ -33,9 +49,13 @@ interface ServerExam {
   createdAt: string;
   updatedAt: string;
   questions: {
+    type?: QType;
     prompt: string;
     options: string[];
     correctOptionIndex: number;
+    statements?: string[];
+    truths?: boolean[];
+    acceptedAnswers?: string[];
     explanation: string;
     difficulty: QuestionDifficulty;
     lessonCode?: string;
@@ -62,9 +82,18 @@ const DIFFS: { v: QuestionDifficulty; l: string }[] = [
 
 let keySeq = 0;
 const newKey = () => `k${Date.now()}_${keySeq++}`;
-const blankQuestion = (): DraftQuestion => ({
-  key: newKey(), prompt: '', options: ['', '', '', ''], correctOptionIndex: -1, explanation: '', difficulty: 'thong_hieu'
+const blankQuestion = (type: QType = 'mcq'): DraftQuestion => ({
+  key: newKey(), type, prompt: '', options: ['', '', '', ''], correctOptionIndex: -1,
+  statements: ['', '', '', ''], truths: [null, null, null, null], acceptedText: '',
+  explanation: '', difficulty: 'thong_hieu'
 });
+const sortByPart = (qs: DraftQuestion[]) =>
+  [...qs].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
+const countBy = (qs: DraftQuestion[]) => {
+  const c: Record<QType, number> = { mcq: 0, true_false: 0, short_answer: 0, essay: 0 };
+  qs.forEach(q => { c[q.type] += 1; });
+  return c;
+};
 const blankDraft = (): Draft => ({
   id: null, title: '', code: '', description: '', durationMinutes: 45, grade: 12, source: 'manual', questions: [blankQuestion()]
 });
@@ -125,20 +154,32 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
     setDraft({
       id: exam.id, title: exam.title, code: exam.code, description: exam.description,
       durationMinutes: exam.durationMinutes, grade: exam.grade, source: exam.source,
-      questions: exam.questions.map(q => ({ key: newKey(), ...q }))
+      questions: exam.questions.map(q => ({
+        ...blankQuestion(q.type || 'mcq'),
+        prompt: q.prompt, explanation: q.explanation, difficulty: q.difficulty, lessonCode: q.lessonCode,
+        options: q.options?.length === 4 ? q.options : ['', '', '', ''],
+        correctOptionIndex: q.correctOptionIndex,
+        statements: q.statements?.length === 4 ? q.statements : ['', '', '', ''],
+        truths: q.truths?.length === 4 ? q.truths : [null, null, null, null],
+        acceptedText: (q.acceptedAnswers || []).join('; ')
+      }))
     });
   };
 
   const patchQ = (key: string, patch: Partial<DraftQuestion>) =>
     setDraft(d => d && { ...d, questions: d.questions.map(q => (q.key === key ? { ...q, ...patch, needsReview: patch.needsReview ?? q.needsReview } : q)) });
 
-  const moveQ = (idx: number, dir: -1 | 1) =>
+  /** Đổi chỗ với câu liền kề cùng dạng (cùng phần của đề). */
+  const moveQ = (key: string, dir: -1 | 1) =>
     setDraft(d => {
       if (!d) return d;
-      const to = idx + dir;
+      const from = d.questions.findIndex(q => q.key === key);
+      const type = d.questions[from].type;
+      let to = from + dir;
+      while (to >= 0 && to < d.questions.length && d.questions[to].type !== type) to += dir;
       if (to < 0 || to >= d.questions.length) return d;
       const qs = [...d.questions];
-      [qs[idx], qs[to]] = [qs[to], qs[idx]];
+      [qs[from], qs[to]] = [qs[to], qs[from]];
       return { ...d, questions: qs };
     });
 
@@ -159,11 +200,15 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
         setNotice({ type: 'err', text: 'Không nhận ra câu hỏi nào trong file. Xem "Mẫu định dạng Word" để soạn đúng cấu trúc.' });
         return;
       }
-      const added: DraftQuestion[] = r.questions.map(q => ({
+      let added: DraftQuestion[] = r.questions.map(q => ({
         key: newKey(),
+        type: q.type,
         prompt: q.prompt,
         options: [0, 1, 2, 3].map(i => q.options[i] || ''),
         correctOptionIndex: q.correctOptionIndex,
+        statements: [0, 1, 2, 3].map(i => q.statements[i] || ''),
+        truths: [0, 1, 2, 3].map(i => (q.type === 'true_false' ? q.truths[i] ?? null : null)),
+        acceptedText: q.acceptedAnswers.join('; '),
         explanation: q.explanation,
         difficulty: q.difficulty,
         lessonCode: q.lessonCode || undefined,
@@ -172,13 +217,19 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
       }));
       setDraft(d => {
         if (!d) return d;
+        // Đề lớp 12 chỉ có 3 dạng: tự luận trong file Word bị bỏ qua
+        const skippedEssay = d.grade === 12 ? added.filter(q => q.type === 'essay').length : 0;
+        if (skippedEssay) {
+          added = added.filter(q => q.type !== 'essay');
+          setImportInfo(prev => [...prev, `Đã bỏ qua ${skippedEssay} câu tự luận vì đề lớp 12 chỉ gồm 3 dạng. Đổi khối sang lớp 10 hoặc 11 nếu muốn giữ.`]);
+        }
         // Bỏ câu trống mặc định nếu chưa nhập gì
         const base = d.questions.length === 1 && !d.questions[0].prompt.trim() ? [] : d.questions;
         return {
           ...d,
           source: 'docx_import',
           title: d.title || file.name.replace(/\.docx$/i, ''),
-          questions: [...base, ...added]
+          questions: sortByPart([...base, ...added])
         };
       });
       const review = added.filter(q => q.needsReview).length;
@@ -198,9 +249,17 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
     if (d.questions.length === 0) return 'Đề cần ít nhất 1 câu hỏi.';
     for (let i = 0; i < d.questions.length; i++) {
       const q = d.questions[i];
+      if (q.type === 'essay' && d.grade === 12) return `Câu ${i + 1}: đề lớp 12 chỉ gồm 3 dạng, không có tự luận.`;
       if (!q.prompt.trim()) return `Câu ${i + 1}: chưa có nội dung câu hỏi.`;
-      if (q.options.some(o => !o.trim())) return `Câu ${i + 1}: cần đủ 4 phương án A, B, C, D.`;
-      if (q.correctOptionIndex < 0 || q.correctOptionIndex > 3) return `Câu ${i + 1}: chưa chọn đáp án đúng.`;
+      if (q.type === 'mcq') {
+        if (q.options.some(o => !o.trim())) return `Câu ${i + 1}: cần đủ 4 phương án A, B, C, D.`;
+        if (q.correctOptionIndex < 0 || q.correctOptionIndex > 3) return `Câu ${i + 1}: chưa chọn đáp án đúng.`;
+      } else if (q.type === 'true_false') {
+        if (q.statements.some(o => !o.trim())) return `Câu ${i + 1}: cần đủ 4 ý a, b, c, d.`;
+        if (q.truths.some(t => t === null)) return `Câu ${i + 1}: chọn Đúng hoặc Sai cho cả 4 ý.`;
+      } else if (q.type === 'short_answer') {
+        if (!q.acceptedText.trim()) return `Câu ${i + 1}: chưa nhập đáp án.`;
+      }
     }
     return null;
   };
@@ -215,8 +274,14 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
       const body = JSON.stringify({
         title: draft.title, code: draft.code, description: draft.description,
         durationMinutes: draft.durationMinutes, grade: draft.grade, source: draft.source, status,
-        questions: draft.questions.map(({ prompt, options, correctOptionIndex, explanation, difficulty, lessonCode }) =>
-          ({ prompt, options, correctOptionIndex, explanation, difficulty, lessonCode }))
+        questions: sortByPart(draft.questions).map(q => ({
+          type: q.type, prompt: q.prompt, options: q.type === 'mcq' ? q.options : [],
+          correctOptionIndex: q.type === 'mcq' ? q.correctOptionIndex : -1,
+          statements: q.type === 'true_false' ? q.statements : undefined,
+          truths: q.type === 'true_false' ? q.truths : undefined,
+          acceptedAnswers: q.type === 'short_answer' ? q.acceptedText.split(/[;|]/).map(a => a.trim()).filter(Boolean) : undefined,
+          explanation: q.explanation, difficulty: q.difficulty, lessonCode: q.lessonCode
+        }))
       });
       await api(draft.id ? `/api/exams/${draft.id}` : '/api/exams', { method: draft.id ? 'PUT' : 'POST', body });
       await Promise.all([load(), refreshExams()]);
@@ -308,6 +373,13 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
               className="inline-flex items-center gap-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 disabled:opacity-60">
               <Upload className="w-4 h-4" /> {importing ? 'Đang đọc file…' : 'Nhập câu hỏi từ file Word'}
             </button>
+            <button onClick={() => setDraft(d => d && ({ ...d, grade: d.grade, questions: [
+                ...d.questions.filter(q => q.prompt.trim()),
+                ...TYPE_ORDER.filter(t => t !== 'essay').flatMap(t => Array.from({ length: Math.max(0, STANDARD_12[t] - d.questions.filter(q => q.type === t && q.prompt.trim()).length) }, () => blankQuestion(t)))
+              ] }))}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2">
+              <ListChecks className="w-4 h-4" /> Tạo khung 12 + 4 + 6 câu
+            </button>
             <button onClick={downloadWordQuestionSampleGuide}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2">
               <Download className="w-4 h-4" /> Mẫu định dạng Word
@@ -328,65 +400,145 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
           </div>
         )}
 
-        <ol className="space-y-4">
-          {draft.questions.map((q, idx) => (
-            <li key={q.key} className={`bg-white rounded-2xl border p-5 space-y-4 ${q.needsReview ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display font-semibold text-slate-900">Câu {idx + 1}</span>
-                <select aria-label={`Mức độ câu ${idx + 1}`} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
-                  value={q.difficulty} onChange={e => patchQ(q.key, { difficulty: e.target.value as QuestionDifficulty })}>
-                  {DIFFS.map(d => <option key={d.v} value={d.v}>{d.l}</option>)}
-                </select>
-                {q.needsReview && <span className="text-xs font-medium text-amber-800">⚠ {q.reviewReason || 'Cần kiểm tra'}</span>}
-                <div className="ml-auto flex items-center gap-1">
-                  <button onClick={() => setPreview(p => ({ ...p, [q.key]: !p[q.key] }))} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100" title="Xem trước công thức" aria-label="Xem trước">
-                    {preview[q.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                  <button onClick={() => moveQ(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Chuyển lên"><ArrowUp className="w-4 h-4" /></button>
-                  <button onClick={() => moveQ(idx, 1)} disabled={idx === draft.questions.length - 1} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Chuyển xuống"><ArrowDown className="w-4 h-4" /></button>
-                  <button onClick={() => setDraft({ ...draft, questions: draft.questions.filter(x => x.key !== q.key) })} className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50" aria-label="Xóa câu"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
+        {/* Cấu trúc đề */}
+        {(() => {
+          const c = countBy(draft.questions);
+          const std = draft.grade === 12;
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200 px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+              {TYPE_ORDER.filter(t => t !== 'essay' || draft.grade !== 12).map(t => {
+                const ok = std && t !== 'essay' ? c[t] === STANDARD_12[t] : true;
+                return (
+                  <span key={t} className={ok ? 'text-slate-700' : 'text-amber-800 font-medium'}>
+                    {TYPE_INFO[t].short}: <strong>{c[t]}</strong>{std && t !== 'essay' ? ` / ${STANDARD_12[t]}` : ''}
+                  </span>
+                );
+              })}
+              {std && <span className="text-xs text-slate-500 ml-auto">Cấu trúc đề tốt nghiệp: 12 câu + 4 câu + 6 câu = 10 điểm</span>}
+            </div>
+          );
+        })()}
 
-              <label className="block text-sm font-medium text-slate-700 space-y-1.5">
-                Nội dung câu hỏi <span className="font-normal text-slate-500">(công thức viết trong $...$)</span>
-                <textarea className={`${inputCls} min-h-[5rem] font-normal`} value={q.prompt} maxLength={6000}
-                  onChange={e => patchQ(q.key, { prompt: e.target.value })} />
-              </label>
-              {preview[q.key] && q.prompt && <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm"><MathRenderer content={q.prompt} /></div>}
+        {(() => {
+          const sorted = sortByPart(draft.questions);
+          let n = 0;
+          return TYPE_ORDER.map(t => {
+            const group = sorted.filter(q => q.type === t);
+            if (group.length === 0) return null;
+            return (
+              <section key={t} className="space-y-4" aria-label={TYPE_INFO[t].part}>
+                <h3 className="font-display text-lg font-semibold text-slate-900 pt-2">{TYPE_INFO[t].part}</h3>
+                <ol className="space-y-4">
+                  {group.map((q, gi) => {
+                    n += 1;
+                    const idx = n;
+                    return (
+                      <li key={q.key} className={`bg-white rounded-2xl border p-5 space-y-4 ${q.needsReview ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-display font-semibold text-slate-900">Câu {idx}</span>
+                          <select aria-label={`Dạng câu ${idx}`} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                            value={q.type} onChange={e => patchQ(q.key, { type: e.target.value as QType, needsReview: false })}>
+                            {TYPE_ORDER.filter(x => x !== 'essay' || draft.grade !== 12).map(x => <option key={x} value={x}>{TYPE_INFO[x].short}</option>)}
+                          </select>
+                          <select aria-label={`Mức độ câu ${idx}`} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                            value={q.difficulty} onChange={e => patchQ(q.key, { difficulty: e.target.value as QuestionDifficulty })}>
+                            {DIFFS.map(d => <option key={d.v} value={d.v}>{d.l}</option>)}
+                          </select>
+                          {q.needsReview && <span className="text-xs font-medium text-amber-800">⚠ {q.reviewReason || 'Cần kiểm tra'}</span>}
+                          <div className="ml-auto flex items-center gap-1">
+                            <button onClick={() => setPreview(p => ({ ...p, [q.key]: !p[q.key] }))} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100" title="Xem trước công thức" aria-label="Xem trước">
+                              {preview[q.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => moveQ(q.key, -1)} disabled={gi === 0} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Chuyển lên"><ArrowUp className="w-4 h-4" /></button>
+                            <button onClick={() => moveQ(q.key, 1)} disabled={gi === group.length - 1} className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Chuyển xuống"><ArrowDown className="w-4 h-4" /></button>
+                            <button onClick={() => setDraft({ ...draft, questions: draft.questions.filter(x => x.key !== q.key) })} className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50" aria-label="Xóa câu"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </div>
 
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium text-slate-700 mb-1">Các phương án — chọn tròn ở đáp án đúng</legend>
-                {q.options.map((o, oi) => (
-                  <div key={oi} className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <input type="radio" name={`correct-${q.key}`} checked={q.correctOptionIndex === oi}
-                        onChange={() => patchQ(q.key, { correctOptionIndex: oi, needsReview: false })}
-                        className="w-4 h-4 accent-emerald-600 shrink-0" aria-label={`Đáp án đúng là ${'ABCD'[oi]}`} />
-                      <span className="w-5 font-semibold text-slate-600 text-sm">{'ABCD'[oi]}.</span>
-                      <input className={inputCls} value={o} maxLength={1500} aria-label={`Phương án ${'ABCD'[oi]}`}
-                        onChange={e => patchQ(q.key, { options: q.options.map((x, i) => (i === oi ? e.target.value : x)) })} />
-                    </div>
-                    {preview[q.key] && o && <div className="ml-12 text-sm text-slate-700"><MathRenderer content={o} inline /></div>}
-                  </div>
-                ))}
-                {q.correctOptionIndex < 0 && <p className="text-xs text-rose-600">Chưa chọn đáp án đúng.</p>}
-              </fieldset>
+                        <label className="block text-sm font-medium text-slate-700 space-y-1.5">
+                          {q.type === 'true_false' ? 'Dẫn đề' : 'Nội dung câu hỏi'} <span className="font-normal text-slate-500">(công thức viết trong $...$)</span>
+                          <textarea className={`${inputCls} min-h-[5rem] font-normal`} value={q.prompt} maxLength={6000}
+                            onChange={e => patchQ(q.key, { prompt: e.target.value })} />
+                        </label>
+                        {preview[q.key] && q.prompt && <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm"><MathRenderer content={q.prompt} /></div>}
 
-              <label className="block text-sm font-medium text-slate-700 space-y-1.5">
-                Lời giải <span className="font-normal text-slate-500">(hiện cho học sinh sau khi nộp bài)</span>
-                <textarea className={`${inputCls} min-h-[3.5rem] font-normal`} value={q.explanation} maxLength={8000}
-                  onChange={e => patchQ(q.key, { explanation: e.target.value })} />
-              </label>
-              {preview[q.key] && q.explanation && <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm"><MathRenderer content={q.explanation} /></div>}
-            </li>
+                        {q.type === 'mcq' && (
+                          <fieldset className="space-y-2">
+                            <legend className="text-sm font-medium text-slate-700 mb-1">Các phương án — chọn tròn ở đáp án đúng</legend>
+                            {q.options.map((o, oi) => (
+                              <div key={oi} className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <input type="radio" name={`correct-${q.key}`} checked={q.correctOptionIndex === oi}
+                                    onChange={() => patchQ(q.key, { correctOptionIndex: oi, needsReview: false })}
+                                    className="w-4 h-4 accent-emerald-600 shrink-0" aria-label={`Đáp án đúng là ${'ABCD'[oi]}`} />
+                                  <span className="w-5 font-semibold text-slate-600 text-sm">{'ABCD'[oi]}.</span>
+                                  <input className={inputCls} value={o} maxLength={1500} aria-label={`Phương án ${'ABCD'[oi]}`}
+                                    onChange={e => patchQ(q.key, { options: q.options.map((x, i) => (i === oi ? e.target.value : x)) })} />
+                                </div>
+                                {preview[q.key] && o && <div className="ml-12 text-sm text-slate-700"><MathRenderer content={o} inline /></div>}
+                              </div>
+                            ))}
+                            {q.correctOptionIndex < 0 && <p className="text-xs text-rose-600">Chưa chọn đáp án đúng.</p>}
+                          </fieldset>
+                        )}
+
+                        {q.type === 'true_false' && (
+                          <fieldset className="space-y-2">
+                            <legend className="text-sm font-medium text-slate-700 mb-1">Bốn ý a, b, c, d — chọn Đúng hoặc Sai cho từng ý</legend>
+                            {q.statements.map((st, si) => (
+                              <div key={si} className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 font-semibold text-slate-600 text-sm">{'abcd'[si]})</span>
+                                  <input className={inputCls} value={st} maxLength={1500} aria-label={`Ý ${'abcd'[si]}`}
+                                    onChange={e => patchQ(q.key, { statements: q.statements.map((x, i) => (i === si ? e.target.value : x)) })} />
+                                  <div className="flex shrink-0 rounded-lg overflow-hidden border border-slate-300" role="radiogroup" aria-label={`Đáp án ý ${'abcd'[si]}`}>
+                                    {([true, false] as const).map(v => (
+                                      <button key={String(v)} type="button" role="radio" aria-checked={q.truths[si] === v}
+                                        onClick={() => patchQ(q.key, { truths: q.truths.map((x, i) => (i === si ? v : x)), needsReview: false })}
+                                        className={`px-3 py-2 text-sm font-semibold ${q.truths[si] === v ? (v ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white') : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                                        {v ? 'Đúng' : 'Sai'}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                {preview[q.key] && st && <div className="ml-7 text-sm text-slate-700"><MathRenderer content={st} inline /></div>}
+                              </div>
+                            ))}
+                            <p className="text-xs text-slate-500">Điểm mỗi câu: đúng 1 ý được 0,1 · 2 ý được 0,25 · 3 ý được 0,5 · đủ 4 ý được 1 điểm.</p>
+                          </fieldset>
+                        )}
+
+                        {q.type === 'short_answer' && (
+                          <label className="block text-sm font-medium text-slate-700 space-y-1.5">
+                            <span className="block">Đáp án <span className="font-normal text-slate-500">(một số; nếu chấp nhận nhiều cách viết, ngăn cách bằng dấu ; ví dụ 12,5; 25/2)</span></span>
+                            <input className={`${inputCls} font-mono sm:max-w-sm`} value={q.acceptedText} maxLength={200}
+                              onChange={e => patchQ(q.key, { acceptedText: e.target.value, needsReview: false })} />
+                          </label>
+                        )}
+
+                        <label className="block text-sm font-medium text-slate-700 space-y-1.5">
+                          {q.type === 'essay' ? 'Hướng dẫn chấm / đáp án mẫu' : 'Lời giải'} <span className="font-normal text-slate-500">(hiện cho học sinh sau khi nộp bài)</span>
+                          <textarea className={`${inputCls} min-h-[3.5rem] font-normal`} value={q.explanation} maxLength={8000}
+                            onChange={e => patchQ(q.key, { explanation: e.target.value })} />
+                        </label>
+                        {preview[q.key] && q.explanation && <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm"><MathRenderer content={q.explanation} /></div>}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            );
+          });
+        })()}
+
+        <div className="flex flex-wrap gap-2">
+          {TYPE_ORDER.filter(t => t !== 'essay' || draft.grade !== 12).map(t => (
+            <button key={t} onClick={() => setDraft({ ...draft, questions: [...draft.questions, blankQuestion(t)] })}
+              className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-400 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5">
+              <Plus className="w-4 h-4" /> Thêm câu {TYPE_INFO[t].short.toLowerCase()}
+            </button>
           ))}
-        </ol>
-
-        <button onClick={() => setDraft({ ...draft, questions: [...draft.questions, blankQuestion()] })}
-          className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-400 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5">
-          <Plus className="w-4 h-4" /> Thêm câu hỏi
-        </button>
+        </div>
 
         <div className="sticky bottom-0 -mx-1 px-1 py-3 bg-slate-50/95 backdrop-blur border-t border-slate-200 flex flex-wrap items-center gap-2">
           <span className="text-sm text-slate-600 mr-auto">{draft.questions.length} câu · {draft.durationMinutes} phút</span>

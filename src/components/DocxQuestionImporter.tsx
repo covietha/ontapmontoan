@@ -47,10 +47,15 @@ export const DocxQuestionImporter: React.FC<DocxQuestionImporterProps> = ({ onCl
 
     try {
       const result = await parseDocxFile(file);
-      setParseErrors(result.errors);
-      setParsedQuestions(result.questions);
+      // Ngân hàng câu hỏi chỉ nhận trắc nghiệm 4 phương án; các dạng khác dùng ở mục Soạn đề thi
+      const mcqOnly = result.questions.filter(q => q.type === 'mcq');
+      const skipped = result.questions.length - mcqOnly.length;
+      setParseErrors(skipped > 0
+        ? [...result.errors, `Đã bỏ qua ${skipped} câu đúng/sai, trả lời ngắn hoặc tự luận. Các dạng này nhập ở mục "Soạn đề thi".`]
+        : result.errors);
+      setParsedQuestions(mcqOnly);
       // Select all valid questions by default
-      setSelectedIndices(new Set(result.questions.map((_, idx) => idx)));
+      setSelectedIndices(new Set(mcqOnly.map((_, idx) => idx)));
     } catch (err: any) {
       setParseErrors([err?.message || 'Có lỗi khi phân tích file Word.']);
     } finally {

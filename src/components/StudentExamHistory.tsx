@@ -1,3 +1,4 @@
+import { formatAnswer } from '../utils/fileParsers';
 import React, { useState, useMemo } from 'react';
 import { 
   Award, 
@@ -298,9 +299,8 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
               <div className="space-y-4">
                 {Object.entries(selectedResult.userAnswers || {}).map(([qId, selectedIdx], index) => {
                   const targetQ = questions.find(q => q.id === qId);
-                  const isCorrect = typeof targetQ?.correctOptionIndex === 'number' 
-                    ? targetQ.correctOptionIndex === selectedIdx 
-                    : true;
+                  const known = typeof targetQ?.correctOptionIndex === 'number';
+                  const isCorrect = known ? targetQ!.correctOptionIndex === selectedIdx : true;
                   const letters = ['A', 'B', 'C', 'D'];
                   const lesson = targetQ ? getLessonById(targetQ.lessonId) : null;
 
@@ -331,9 +331,9 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                         </div>
 
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          !known ? 'bg-slate-100 text-slate-700' : isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                         }`}>
-                          {isCorrect ? 'Đúng' : 'Sai'}
+                          {!known ? 'Đã làm' : isCorrect ? 'Đúng' : 'Sai'}
                         </span>
                       </div>
 
@@ -347,11 +347,11 @@ export const StudentExamHistory: React.FC<StudentExamHistoryProps> = ({
                       {/* User's Choice vs Correct Answer */}
                       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500">Phương án bạn chọn:</span>
+                          <span className="text-slate-500">Bài làm của bạn:</span>
                           <span className={`font-mono font-bold px-2 py-0.5 rounded ${
                             isCorrect ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
                           }`}>
-                            {letters[selectedIdx] ?? 'Chưa chọn'}
+                            {formatAnswer(selectedIdx)}
                           </span>
                         </div>
 

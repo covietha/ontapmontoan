@@ -75,7 +75,7 @@ interface DataContextType {
     correctCount: number;
     totalCount: number;
     timeSpentSeconds: number;
-    userAnswers: Record<string, number>;
+    userAnswers: Record<string, any>;
     verificationStatus?: GradeVerificationStatus;
   }) => Promise<ExamResult>;
   
@@ -334,10 +334,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lessonId: '',
           lessonCode: q.lessonCode || '',
           grade: e.grade,
-          questionType: 'mcq',
+          questionType: q.type || 'mcq',
           difficulty: q.difficulty,
           prompt: q.prompt,
-          options: q.options,
+          options: q.options || [],
+          statements: q.statements,
           hintOnWrong: '',
           prerequisiteKnowledge: '',
           similarQuestionIds: [],
@@ -429,7 +430,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     correctCount: number;
     totalCount: number;
     timeSpentSeconds: number;
-    userAnswers: Record<string, number>;
+    userAnswers: Record<string, any>;
     verificationStatus?: GradeVerificationStatus;
   }): Promise<ExamResult> => {
     const studentId = profile?.uid || 'guest-student';

@@ -60,7 +60,7 @@ export interface StudentProfile {
 }
 
 export type QuestionDifficulty = 'nhan_biet' | 'thong_hieu' | 'van_dung' | 'van_dung_cao';
-export type QuestionType = 'mcq' | 'true_false' | 'short_answer';
+export type QuestionType = 'mcq' | 'true_false' | 'short_answer' | 'essay';
 export type ContentStatus = 'sample_needs_review' | 'verified';
 export type QuestionApprovalStatus = 'pending' | 'approved' | 'rejected' | 'trash';
 
@@ -120,6 +120,7 @@ export interface Question {
   difficulty: QuestionDifficulty;
   prompt: string; // LaTeX formatted text
   options: string[]; // 4 options with LaTeX
+  statements?: string[]; // câu đúng/sai: 4 ý a, b, c, d
   correctOptionIndex?: number; // 0, 1, 2, 3 (chỉ có ở câu tự luyện công khai, không có ở đề thi)
   explanation?: string; // step-by-step verified solution
   hintOnWrong: string; // heuristic advice or formula reminder
@@ -197,7 +198,7 @@ export interface ExamResult {
   correctCount: number;
   totalCount: number;
   timeSpentSeconds: number;
-  userAnswers: Record<string, number>; // questionId -> selectedOptionIndex
+  userAnswers: Record<string, any>; // questionId -> số (trắc nghiệm) | mảng đúng/sai | chuỗi (trả lời ngắn, tự luận)
   verificationStatus: GradeVerificationStatus;
   completedAt: string;
 }

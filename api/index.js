@@ -767,6 +767,7 @@ async function tombstoneCurriculum(kind, id, by) {
 }
 
 // server/exams.ts
+var Q_TYPES = ["mcq", "true_false", "short_answer", "essay"];
 var COL2 = "customExams";
 var DIFFICULTIES = ["nhan_biet", "thong_hieu", "van_dung", "van_dung_cao"];
 var MAX_QUESTIONS = 100;
@@ -781,30 +782,53 @@ function validateExamInput(body, examId) {
   const rawQuestions = Array.isArray(body?.questions) ? body.questions : [];
   if (rawQuestions.length === 0) return { ok: false, error: "\u0110\u1EC1 thi c\u1EA7n \xEDt nh\u1EA5t 1 c\xE2u h\u1ECFi." };
   if (rawQuestions.length > MAX_QUESTIONS) return { ok: false, error: `M\u1ED7i \u0111\u1EC1 t\u1ED1i \u0111a ${MAX_QUESTIONS} c\xE2u.` };
+  const gradeForCheck = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
   const questions = [];
   for (let i = 0; i < rawQuestions.length; i++) {
     const q = rawQuestions[i];
     const n = i + 1;
+    const type = Q_TYPES.includes(q?.type) ? q.type : "mcq";
+    if (type === "essay" && gradeForCheck === 12) {
+      return { ok: false, error: `C\xE2u ${n}: \u0111\u1EC1 l\u1EDBp 12 ch\u1EC9 g\u1ED3m 3 d\u1EA1ng (tr\u1EAFc nghi\u1EC7m, \u0111\xFAng/sai, tr\u1EA3 l\u1EDDi ng\u1EAFn). T\u1EF1 lu\u1EADn d\xF9ng cho \u0111\u1EC1 l\u1EDBp 10, 11.` };
+    }
     const prompt = str2(q?.prompt, 6e3);
     if (!prompt) return { ok: false, error: `C\xE2u ${n}: ch\u01B0a c\xF3 n\u1ED9i dung c\xE2u h\u1ECFi.` };
-    const options = Array.isArray(q?.options) ? q.options.map((o) => str2(o, 1500)) : [];
-    if (options.length !== 4 || options.some((o) => !o)) {
-      return { ok: false, error: `C\xE2u ${n}: c\u1EA7n \u0111\u1EE7 4 ph\u01B0\u01A1ng \xE1n A, B, C, D v\xE0 kh\xF4ng \u0111\u1EC3 tr\u1ED1ng.` };
-    }
-    const correct = Number(q?.correctOptionIndex);
-    if (!Number.isInteger(correct) || correct < 0 || correct > 3) {
-      return { ok: false, error: `C\xE2u ${n}: ch\u01B0a ch\u1ECDn \u0111\xE1p \xE1n \u0111\xFAng.` };
-    }
     const difficulty = DIFFICULTIES.includes(q?.difficulty) ? q.difficulty : "thong_hieu";
-    questions.push({
+    const base = {
       id: `${examId}-q${n}`,
+      type,
       prompt,
-      options,
-      correctOptionIndex: correct,
       explanation: str2(q?.explanation, 8e3),
       difficulty,
       lessonCode: str2(q?.lessonCode, 80) || void 0
-    });
+    };
+    if (type === "mcq") {
+      const options = Array.isArray(q?.options) ? q.options.map((o) => str2(o, 1500)) : [];
+      if (options.length !== 4 || options.some((o) => !o)) {
+        return { ok: false, error: `C\xE2u ${n}: c\u1EA7n \u0111\u1EE7 4 ph\u01B0\u01A1ng \xE1n A, B, C, D v\xE0 kh\xF4ng \u0111\u1EC3 tr\u1ED1ng.` };
+      }
+      const correct = Number(q?.correctOptionIndex);
+      if (!Number.isInteger(correct) || correct < 0 || correct > 3) {
+        return { ok: false, error: `C\xE2u ${n}: ch\u01B0a ch\u1ECDn \u0111\xE1p \xE1n \u0111\xFAng.` };
+      }
+      questions.push({ ...base, options, correctOptionIndex: correct });
+    } else if (type === "true_false") {
+      const statements = Array.isArray(q?.statements) ? q.statements.map((o) => str2(o, 1500)) : [];
+      if (statements.length !== 4 || statements.some((o) => !o)) {
+        return { ok: false, error: `C\xE2u ${n}: c\xE2u \u0111\xFAng/sai c\u1EA7n \u0111\u1EE7 4 \xFD a, b, c, d v\xE0 kh\xF4ng \u0111\u1EC3 tr\u1ED1ng.` };
+      }
+      const truths = Array.isArray(q?.truths) ? q.truths : [];
+      if (truths.length !== 4 || truths.some((t) => typeof t !== "boolean")) {
+        return { ok: false, error: `C\xE2u ${n}: c\u1EA7n ch\u1ECDn \u0110\xFAng ho\u1EB7c Sai cho c\u1EA3 4 \xFD.` };
+      }
+      questions.push({ ...base, options: [], correctOptionIndex: -1, statements, truths });
+    } else if (type === "short_answer") {
+      const accepted = (Array.isArray(q?.acceptedAnswers) ? q.acceptedAnswers : []).map((a) => str2(a, 100)).filter(Boolean).slice(0, 10);
+      if (accepted.length === 0) return { ok: false, error: `C\xE2u ${n}: ch\u01B0a nh\u1EADp \u0111\xE1p \xE1n c\u1EE7a c\xE2u tr\u1EA3 l\u1EDDi ng\u1EAFn.` };
+      questions.push({ ...base, options: [], correctOptionIndex: -1, acceptedAnswers: accepted });
+    } else {
+      questions.push({ ...base, options: [], correctOptionIndex: -1 });
+    }
   }
   const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
   const status = body?.status === "published" ? "published" : "draft";
@@ -850,11 +874,79 @@ function toPublicExam(exam) {
     questions: exam.questions.map((q, i) => ({
       id: q.id,
       code: `C${i + 1}`,
+      type: q.type || "mcq",
       prompt: q.prompt,
       options: q.options,
+      statements: q.statements,
       difficulty: q.difficulty,
       lessonCode: q.lessonCode
     }))
+  };
+}
+var MAX_POINTS = { mcq: 0.25, true_false: 1, short_answer: 0.5, essay: 0 };
+var TF_POINTS = [0, 0.1, 0.25, 0.5, 1];
+function sameShortAnswer(given, accepted) {
+  const clean = (v) => v.trim().toLowerCase().replace(/\s+/g, "").replace(/,/g, ".").replace(/^\+/, "");
+  const a = clean(given);
+  const b = clean(accepted);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const na = Number(a);
+  const nb = Number(b);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return Math.abs(na - nb) <= 1e-9 * Math.max(1, Math.abs(nb));
+  return false;
+}
+function sanitizeAnswer(type, v) {
+  if (type === "mcq") return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 3 ? v : void 0;
+  if (type === "true_false") {
+    if (!Array.isArray(v) || v.length !== 4) return void 0;
+    return v.map((x) => typeof x === "boolean" ? x : null);
+  }
+  if (typeof v === "string") return v.slice(0, type === "essay" ? 8e3 : 60);
+  return void 0;
+}
+function gradeQuestion(q, answer) {
+  const max = MAX_POINTS[q.type];
+  if (q.type === "true_false") {
+    const truths = q.truths || [false, false, false, false];
+    const given = Array.isArray(answer) ? answer : [];
+    const statementCorrect = truths.map((t, i) => given[i] === t);
+    const n = statementCorrect.filter(Boolean).length;
+    return {
+      type: q.type,
+      isCorrect: n === 4,
+      points: TF_POINTS[n],
+      maxPoints: max,
+      correctOptionIndex: -1,
+      correctTruths: truths,
+      statementCorrect,
+      explanation: q.explanation
+    };
+  }
+  if (q.type === "short_answer") {
+    const accepted = q.acceptedAnswers || [];
+    const ok2 = typeof answer === "string" && accepted.some((a) => sameShortAnswer(answer, a));
+    return {
+      type: q.type,
+      isCorrect: ok2,
+      points: ok2 ? max : 0,
+      maxPoints: max,
+      correctOptionIndex: -1,
+      correctAnswers: accepted,
+      explanation: q.explanation
+    };
+  }
+  if (q.type === "essay") {
+    return { type: q.type, isCorrect: false, points: 0, maxPoints: 0, correctOptionIndex: -1, pendingReview: true, explanation: q.explanation };
+  }
+  const ok = typeof answer === "number" && answer === q.correctOptionIndex;
+  return {
+    type: "mcq",
+    isCorrect: ok,
+    points: ok ? max : 0,
+    maxPoints: max,
+    correctOptionIndex: q.correctOptionIndex ?? -1,
+    explanation: q.explanation
   };
 }
 async function resolveExamForGrading(examId) {
@@ -864,22 +956,28 @@ async function resolveExamForGrading(examId) {
       id: official.id,
       title: official.title,
       durationMinutes: official.durationMinutes,
-      questionIds: official.questionIds,
-      keyOf: (qId) => OFFICIAL_QUESTION_KEYS[qId]
+      questions: official.questionIds.filter((qId) => OFFICIAL_QUESTION_KEYS[qId]).map((qId) => ({
+        id: qId,
+        type: "mcq",
+        correctOptionIndex: OFFICIAL_QUESTION_KEYS[qId].correctOptionIndex,
+        explanation: OFFICIAL_QUESTION_KEYS[qId].explanation
+      }))
     };
   }
   const custom = await getCustomExam(examId);
   if (!custom || custom.status !== "published") return null;
-  const byId = new Map(custom.questions.map((q) => [q.id, q]));
   return {
     id: custom.id,
     title: custom.title,
     durationMinutes: custom.durationMinutes,
-    questionIds: custom.questions.map((q) => q.id),
-    keyOf: (qId) => {
-      const q = byId.get(qId);
-      return q ? { correctOptionIndex: q.correctOptionIndex, explanation: q.explanation } : void 0;
-    }
+    questions: custom.questions.map((q) => ({
+      id: q.id,
+      type: q.type || "mcq",
+      correctOptionIndex: q.correctOptionIndex,
+      truths: q.truths,
+      acceptedAnswers: q.acceptedAnswers,
+      explanation: q.explanation
+    }))
   };
 }
 
@@ -993,34 +1091,35 @@ async function createExpressApp() {
       return res.status(400).json({ error: "C\u1EA5u tr\xFAc b\xE0i l\xE0m (userAnswers) kh\xF4ng h\u1EE3p l\u1EC7 (ph\u1EA3i l\xE0 key-value object)" });
     }
     const rawAnswers = userAnswers || {};
-    const answerKeys = Object.keys(rawAnswers);
-    if (answerKeys.length > exam.questionIds.length * 3) {
+    if (Object.keys(rawAnswers).length > exam.questions.length * 3) {
       return res.status(400).json({ error: "S\u1ED1 l\u01B0\u1EE3ng c\xE2u tr\u1EA3 l\u1EDDi v\u01B0\u1EE3t qu\xE1 gi\u1EDBi h\u1EA1n b\u1EA5t th\u01B0\u1EDDng c\u1EE7a \u0111\u1EC1 thi" });
     }
     const sanitizedAnswers = {};
-    for (const [qId, val] of Object.entries(rawAnswers)) {
-      if (typeof qId === "string" && typeof val === "number" && Number.isInteger(val) && val >= 0 && val <= 10) {
-        sanitizedAnswers[qId] = val;
-      }
+    for (const q of exam.questions) {
+      const a = sanitizeAnswer(q.type, rawAnswers[q.id]);
+      if (a !== void 0) sanitizedAnswers[q.id] = a;
     }
     let correctCount = 0;
+    let earned = 0;
+    let maxPoints = 0;
+    let gradedCount = 0;
+    let essayCount = 0;
     const detailedResults = {};
-    exam.questionIds.forEach((qId) => {
-      const selected = sanitizedAnswers[qId];
-      const key = exam.keyOf(qId);
-      if (key) {
-        const isCorrect = typeof selected === "number" && selected === key.correctOptionIndex;
-        if (isCorrect) correctCount += 1;
-        detailedResults[qId] = {
-          isCorrect,
-          correctOptionIndex: key.correctOptionIndex,
-          explanation: key.explanation
-        };
+    exam.questions.forEach((q) => {
+      const out = gradeQuestion(q, sanitizedAnswers[q.id]);
+      detailedResults[q.id] = out;
+      if (q.type === "essay") {
+        essayCount += 1;
+        return;
       }
+      gradedCount += 1;
+      if (out.isCorrect) correctCount += 1;
+      earned += out.points;
+      maxPoints += out.maxPoints;
     });
-    const totalCount = exam.questionIds.length;
-    const rawScore = totalCount > 0 ? correctCount / totalCount * 10 : 0;
-    const score = Math.round(rawScore * 10) / 10;
+    const totalCount = gradedCount;
+    const rawScore = maxPoints > 0 ? earned / maxPoints * 10 : 0;
+    const score = Math.round(rawScore * 100) / 100;
     const maxAllowedSeconds = exam.durationMinutes * 60 + 1800;
     const parsedTime = typeof timeSpentSeconds === "number" && timeSpentSeconds > 0 ? Math.min(Math.floor(timeSpentSeconds), maxAllowedSeconds) : 1;
     const resultRecord = {
@@ -1036,7 +1135,8 @@ async function createExpressApp() {
       userAnswers: sanitizedAnswers,
       verificationStatus: "server_verified",
       gradedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      detailedResults
+      detailedResults,
+      essayCount
     };
     await store.set(RESULTS, resultRecord.id, resultRecord);
     const firestoreSync = { synced: false, documentId: resultRecord.id };
