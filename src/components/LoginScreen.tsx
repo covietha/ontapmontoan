@@ -12,6 +12,7 @@ import {
   ArrowRight,
   X
 } from 'lucide-react';
+import { StudentsIllustration } from './StudentsIllustration';
 import { BrandMark } from './BrandMark';
 import { SCHOOL } from '../config/navigation';
 import { useAuth } from '../context/AuthContext';
@@ -80,19 +81,7 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
 
-        <svg viewBox="0 0 520 300" className="relative w-full max-w-xl self-center my-8" role="img" aria-label="Đồ thị hàm số bậc ba có cực đại và cực tiểu">
-          <g stroke="rgb(255 255 255 / 0.35)" strokeWidth="1.2">
-            <line x1="20" y1="170" x2="505" y2="170" />
-            <line x1="260" y1="285" x2="260" y2="15" />
-          </g>
-          <path d="M500 170l-9-4v8zM260 14l-4 9h8z" fill="rgb(255 255 255 / 0.5)" />
-          <path d="M 98 282 Q 150 60 200 71 T 260 170 T 320 269 Q 370 280 422 58" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-          <line x1="250" y1="269" x2="440" y2="269" stroke="#ff8a63" strokeWidth="2" strokeDasharray="6 5" />
-          <circle cx="320" cy="269" r="5.5" fill="#ff8a63" />
-          <circle cx="200" cy="71" r="5.5" fill="none" stroke="#ff8a63" strokeWidth="2" />
-          <text x="345" y="292" fill="#ffc2ad" fontSize="15" fontFamily="Newsreader, serif" fontStyle="italic">f′(x) = 0</text>
-          <text x="212" y="62" fill="#ffc2ad" fontSize="15" fontFamily="Newsreader, serif" fontStyle="italic">cực đại</text>
-        </svg>
+        <StudentsIllustration className="relative w-full max-w-xl self-center my-8" />
 
         <div className="relative max-w-xl">
           <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.12]">
