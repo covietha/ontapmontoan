@@ -186,7 +186,7 @@ function AppContent() {
         {/* Thanh trạng thái trên cùng: đổi theo menu đang mở */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
           <div className="tone-rule" />
-          <div className="min-h-[4.25rem] px-4 sm:px-6 py-2.5 flex items-center gap-3">
+          <div className="min-h-[3rem] px-4 sm:px-6 py-1.5 flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
               className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
@@ -204,18 +204,18 @@ function AppContent() {
 
             {/* key đổi theo menu để chạy lại chuyển động vào của tiêu đề */}
             <div key={activeTab + (mode ? practiceSubMode : '') + (subKey ?? '')} className="status-in flex items-center gap-3 min-w-0 flex-1">
-              <div className="tone-chip hidden sm:flex w-10 h-10 rounded-lg items-center justify-center shrink-0">
-                <StatusIcon className="w-5 h-5" aria-hidden="true" />
+              <div className="tone-chip hidden sm:flex w-8 h-8 rounded-lg items-center justify-center shrink-0">
+                <StatusIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <nav aria-label="Vị trí hiện tại" className="flex items-center gap-1 text-xs text-slate-500">
+                <nav aria-label="Vị trí hiện tại" className="sr-only">
                   <span>{roleLabel}</span>
                   <ChevronRight className="w-3 h-3 text-slate-300" aria-hidden="true" />
                   <span>{nav.section}</span>
                   {(mode || sub) && (<><ChevronRight className="w-3 h-3 text-slate-300" aria-hidden="true" /><span>{nav.title}</span></>)}
                 </nav>
-                <h1 className="text-lg sm:text-xl leading-tight text-slate-900 truncate">{statusTitle}</h1>
-                <p className="hidden lg:block text-xs text-slate-500 truncate">{statusDescription}</p>
+                <h1 className="text-base sm:text-lg leading-tight text-slate-900 truncate" title={statusDescription}>{statusTitle}</h1>
+                <p className="sr-only">{statusDescription}</p>
               </div>
             </div>
 
@@ -227,7 +227,7 @@ function AppContent() {
               )}
               <button
                 onClick={logout}
-                className="px-3 py-2 text-sm font-medium text-slate-700 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 rounded-lg flex items-center gap-1.5"
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 rounded-lg flex items-center gap-1.5"
                 title="Đăng xuất khỏi hệ thống"
               >
                 <LogOut className="w-4 h-4" />
@@ -238,7 +238,7 @@ function AppContent() {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[88rem] w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4">
           
           {/* ========================================================================= */}
           {/* STUDENT INTERFACE (Strictly 5 sections) */}
@@ -268,12 +268,12 @@ function AppContent() {
 
               {/* 3. Luyện tập và thi thử */}
               {activeTab === 'student_practice' && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Switcher between Topic Practice and Exam Room */}
-                  <div className="bg-white p-2 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-2 max-w-md mx-auto">
+                  <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-2 max-w-md mx-auto">
                     <button
                       onClick={() => setPracticeSubMode('topics')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         practiceSubMode === 'topics'
                           ? 'bg-blue-600 text-white shadow-xs'
                           : 'text-slate-600 hover:bg-slate-100'
@@ -285,7 +285,7 @@ function AppContent() {
 
                     <button
                       onClick={() => setPracticeSubMode('exam')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         practiceSubMode === 'exam'
                           ? 'bg-blue-600 text-white shadow-xs'
                           : 'text-slate-600 hover:bg-slate-100'

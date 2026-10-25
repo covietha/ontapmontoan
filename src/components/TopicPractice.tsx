@@ -214,15 +214,15 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-3 pb-8">
       {/* Header filter controls */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Target className="w-5 h-5 text-blue-600" />
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-600" />
             Luyện tập thông minh theo chuyên đề
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="sr-only">
             Chấm điểm sau khi nộp. Sai câu nào sẽ được chỉ rõ bài lý thuyết cần đọc và gợi ý làm câu tương tự.
           </p>
         </div>
@@ -266,7 +266,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
       {currentQuestion ? (
         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
           {/* Question Meta top row */}
-          <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-slate-50/80 px-5 py-2.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg bg-blue-600 text-white shadow-xs">
                 {currentQuestion.code}
@@ -302,14 +302,14 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-6">
+          <div className="p-4 sm:p-5 space-y-4">
             {/* Question Prompt */}
-            <div className="text-base sm:text-lg font-semibold text-slate-900 leading-relaxed bg-slate-50/40 p-4 sm:p-6 rounded-2xl border border-slate-100">
+            <div className="text-base sm:text-lg font-semibold text-slate-900 leading-relaxed bg-slate-50/40 p-3 sm:p-4 rounded-2xl border border-slate-100">
               <MathRenderer content={currentQuestion.prompt} />
             </div>
 
             {/* 4 Choices */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
               {currentQuestion.options.map((optText, index) => {
                 const letter = letters[index];
                 const isSelected = selectedOption === index;
@@ -336,7 +336,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
                     key={index}
                     disabled={submitted}
                     onClick={() => setSelectedOption(index)}
-                    className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4 ${stateClasses}`}
+                    className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${stateClasses}`}
                   >
                     <span
                       className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center shrink-0 text-sm transition-all ${
