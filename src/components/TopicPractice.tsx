@@ -228,7 +228,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 min-w-0 max-w-full [&>select]:max-w-full [&>select]:min-w-0 [&>select]:truncate">
           <select
             value={selectedTopicId}
             onChange={(e) => {
