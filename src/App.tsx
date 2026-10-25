@@ -378,7 +378,7 @@ function AppContent() {
 
               {/* Kiểm duyệt học liệu */}
               {activeTab === 'teacher_review' && (
-                <TeacherManagement initialSubTab="review" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                <TeacherManagement tabs={['review', 'addQuestion']} initialSubTab="review" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
               )}
 
               {/* 5. Soạn đề thi & Ngân hàng đề */}
@@ -388,7 +388,7 @@ function AppContent() {
 
               {/* 6. Xem kết quả thi của học sinh, bài làm chi tiết */}
               {activeTab === 'teacher_results' && (
-                <TeacherManagement initialSubTab="results" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                <TeacherManagement tabs={['results']} initialSubTab="results" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
               )}
 
               {/* 7. Quản lý tài khoản trường & Phân quyền */}
@@ -399,7 +399,7 @@ function AppContent() {
               {/* 8. Phân quyền quản trị (Chỉ mở cho Root Admin viethathd@gmail.com) */}
               {activeTab === 'teacher_admins' && (
                 isRootAdmin ? (
-                  <TeacherManagement initialSubTab="admins" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                  <TeacherManagement tabs={['admins', 'securityGuide', 'firebaseCheck']} initialSubTab="admins" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
                 ) : (
                   <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 max-w-md mx-auto space-y-4 my-8">
                     <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 mx-auto flex items-center justify-center">

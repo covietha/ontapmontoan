@@ -204,12 +204,6 @@ const ExamResultReview: React.FC<Props> = ({ resultId, onClose }) => {
                         </div>
                       )}
 
-                      {out?.explanation && (
-                        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-sm">
-                          <div className="font-bold text-blue-800 mb-1">{it.type === 'essay' ? 'Gợi ý chấm / hướng dẫn' : 'Lời giải'}</div>
-                          <MathRenderer content={out.explanation} className="text-[15px]" />
-                        </div>
-                      )}
                     </div>
                   );
                 })}

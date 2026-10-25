@@ -34,12 +34,14 @@ import AccountManagement from './AccountManagement';
 import config from '../../firebase-applet-config.json';
 
 interface TeacherManagementProps {
+  /** Các tab được hiện trong trang này; bỏ trống = hiện tất cả. Chỉ 1 tab thì ẩn thanh tab. */
+  tabs?: Array<'review' | 'addQuestion' | 'results' | 'admins' | 'accounts' | 'securityGuide' | 'firebaseCheck'>;
   initialSubTab?: 'review' | 'addQuestion' | 'results' | 'admins' | 'accounts' | 'securityGuide' | 'firebaseCheck';
   /** Báo cho khung ứng dụng biết tab con đang mở để thanh trạng thái đổi theo */
   onSubTabChange?: (sub: string) => void;
 }
 
-export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSubTab = 'review', onSubTabChange }) => {
+export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSubTab = 'review', onSubTabChange, tabs }) => {
   const { isTeacher, profile, getIdToken } = useAuth();
   const { 
     lessons, 
@@ -324,8 +326,9 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
   return (
     <div className="space-y-6 pb-12">
       {/* Sub Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+      <div className={`flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2 ${tabs && tabs.length <= 1 ? 'hidden' : ''}`}>
         <button
+          style={{ display: !tabs || tabs.includes('review') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('review')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeSubTab === 'review'
@@ -337,6 +340,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('addQuestion') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('addQuestion')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeSubTab === 'addQuestion'
@@ -348,6 +352,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('results') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('results')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
             activeSubTab === 'results'
@@ -360,6 +365,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('admins') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('admins')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
             activeSubTab === 'admins'
@@ -372,6 +378,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('accounts') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('accounts')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
             activeSubTab === 'accounts'
@@ -384,6 +391,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('securityGuide') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('securityGuide')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeSubTab === 'securityGuide'
@@ -395,6 +403,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
         </button>
 
         <button
+          style={{ display: !tabs || tabs.includes('firebaseCheck') ? undefined : 'none' }}
           onClick={() => setActiveSubTab('firebaseCheck')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
             activeSubTab === 'firebaseCheck'
