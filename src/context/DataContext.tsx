@@ -40,6 +40,11 @@ interface DataContextType {
   exams: Exam[];
   /** Tải lại các đề giáo viên đã phát hành từ máy chủ. */
   refreshExams: () => Promise<void>;
+  /** Giáo viên lưu/xóa chuyên đề và bài học trên máy chủ; mọi học sinh thấy ngay sau khi tải lại. */
+  saveTopic: (topic: Topic) => Promise<void>;
+  saveLesson: (lesson: Lesson) => Promise<void>;
+  deleteTopic: (id: string) => Promise<void>;
+  deleteLesson: (id: string) => Promise<void>;
   attempts: QuestionAttempt[];
   examResults: ExamResult[];
   classrooms: Classroom[];
@@ -115,12 +120,12 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile, isTeacher, isRootAdmin, getIdToken } = useAuth();
   
-  const [topics, setTopics] = useState<Topic[]>(() => {
+  const [baseTopics, setBaseTopics] = useState<Topic[]>(() => {
     const saved = localStorage.getItem('thpt_math_topics');
     return saved ? JSON.parse(saved) : INITIAL_TOPICS;
   });
 
-  const [lessons, setLessons] = useState<Lesson[]>(() => {
+  const [baseLessons, setBaseLessons] = useState<Lesson[]>(() => {
     const saved = localStorage.getItem('thpt_math_lessons');
     return saved ? JSON.parse(saved) : INITIAL_LESSONS;
   });
@@ -177,12 +182,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sync to localStorage
   useEffect(() => {
-    localStorage.setItem('thpt_math_topics', JSON.stringify(topics));
-  }, [topics]);
+    localStorage.setItem('thpt_math_topics', JSON.stringify(baseTopics));
+  }, [baseTopics]);
 
   useEffect(() => {
-    localStorage.setItem('thpt_math_lessons', JSON.stringify(lessons));
-  }, [lessons]);
+    localStorage.setItem('thpt_math_lessons', JSON.stringify(baseLessons));
+  }, [baseLessons]);
 
   useEffect(() => {
     localStorage.setItem('thpt_math_questions', JSON.stringify(questions));
@@ -242,6 +247,64 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncServerResults();
     }
   }, [profile?.uid, getIdToken]);
+
+  // Chuyên đề, bài học giáo viên đã thêm/sửa/xóa trên máy chủ: ghép lên dữ liệu mẫu, dùng chung cho mọi máy
+  const [curriculum, setCurriculum] = useState<{ topics: Topic[]; lessons: Lesson[]; deletedTopicIds: string[]; deletedLessonIds: string[] }>(
+    { topics: [], lessons: [], deletedTopicIds: [], deletedLessonIds: [] }
+  );
+
+  const topics = React.useMemo(() => {
+    const over = new Map(curriculum.topics.map(t => [t.id, t]));
+    const gone = new Set(curriculum.deletedTopicIds);
+    const merged = baseTopics.filter(t => !gone.has(t.id)).map(t => over.get(t.id) || t);
+    curriculum.topics.forEach(t => { if (!baseTopics.some(b => b.id === t.id)) merged.push(t); });
+    return merged.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  }, [baseTopics, curriculum]);
+
+  const lessons = React.useMemo(() => {
+    const over = new Map(curriculum.lessons.map(l => [l.id, l]));
+    const gone = new Set(curriculum.deletedLessonIds);
+    const merged = baseLessons.filter(l => !gone.has(l.id)).map(l => over.get(l.id) || l);
+    curriculum.lessons.forEach(l => { if (!baseLessons.some(b => b.id === l.id)) merged.push(l); });
+    return merged;
+  }, [baseLessons, curriculum]);
+
+  const refreshCurriculum = useCallback(async () => {
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      const res = await fetch('/api/curriculum', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const d = await res.json();
+      setCurriculum({
+        topics: d.topics || [], lessons: d.lessons || [],
+        deletedTopicIds: d.deletedTopicIds || [], deletedLessonIds: d.deletedLessonIds || []
+      });
+    } catch {
+      // Không có mạng: dùng dữ liệu đang có
+    }
+  }, [getIdToken]);
+
+  useEffect(() => {
+    if (profile?.uid) refreshCurriculum();
+  }, [profile?.uid, refreshCurriculum]);
+
+  const curriculumRequest = async (method: 'PUT' | 'DELETE', kind: 'topics' | 'lessons', id: string, body?: unknown) => {
+    const token = await getIdToken();
+    const res = await fetch(`/api/curriculum/${kind}/${id}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
+    await refreshCurriculum();
+  };
+
+  const saveTopic = (t: Topic) => curriculumRequest('PUT', 'topics', t.id, t);
+  const saveLesson = (l: Lesson) => curriculumRequest('PUT', 'lessons', l.id, l);
+  const deleteTopic = (id: string) => curriculumRequest('DELETE', 'topics', id);
+  const deleteLesson = (id: string) => curriculumRequest('DELETE', 'lessons', id);
 
   // Đề do giáo viên soạn: lấy từ máy chủ, không lưu vào localStorage
   const refreshExams = useCallback(async () => {
@@ -399,13 +462,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Teacher / Curriculum Actions
   const updateLesson = async (updatedLesson: Lesson) => {
-    setLessons(prev => prev.map(l => (l.id === updatedLesson.id ? updatedLesson : l)));
+    setBaseLessons(prev => prev.map(l => (l.id === updatedLesson.id ? updatedLesson : l)));
   };
 
   const addLesson = async (newLessonData: Omit<Lesson, 'id'>) => {
     const id = `lesson-${Date.now().toString().slice(-4)}`;
     const newLesson: Lesson = { ...newLessonData, id };
-    setLessons(prev => [...prev, newLesson]);
+    setBaseLessons(prev => [...prev, newLesson]);
   };
 
   const updateQuestion = async (updatedQuestion: Question) => {
@@ -433,7 +496,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyContent = async (type: 'lesson' | 'question' | 'exam', id: string) => {
     if (type === 'lesson') {
-      setLessons(prev => prev.map(l => (l.id === id ? { ...l, status: 'verified' as ContentStatus } : l)));
+      setBaseLessons(prev => prev.map(l => (l.id === id ? { ...l, status: 'verified' as ContentStatus } : l)));
     } else if (type === 'question') {
       await approveQuestion(id);
     } else if (type === 'exam') {
@@ -753,6 +816,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         questions,
         exams: [...publishedExams, ...exams],
         refreshExams,
+        saveTopic,
+        saveLesson,
+        deleteTopic,
+        deleteLesson,
         attempts,
         examResults,
         classrooms,

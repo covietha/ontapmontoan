@@ -684,13 +684,95 @@ async function verifyFirebaseToken(authHeader) {
   };
 }
 
+// server/curriculum.ts
+var COL = "curriculum";
+var ID_RE = /^[a-z0-9][a-z0-9-]{2,63}$/;
+var str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
+var strList = (v, maxItems, maxLen) => (Array.isArray(v) ? v : []).map((x) => str(x, maxLen)).filter(Boolean).slice(0, maxItems);
+function validId(id) {
+  return typeof id === "string" && ID_RE.test(id);
+}
+function cleanTopic(id, b) {
+  const title = str(b?.title, 300);
+  if (!title) return { ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn chuy\xEAn \u0111\u1EC1." };
+  const grade = [10, 11, 12].includes(Number(b?.grade)) ? Number(b.grade) : 12;
+  const order = Number.isFinite(Number(b?.order)) ? Math.max(0, Math.min(999, Math.round(Number(b.order)))) : 99;
+  return {
+    ok: true,
+    value: { id, title, description: str(b?.description, 2e3), order, grade, icon: str(b?.icon, 40) || "Activity", status: "verified" }
+  };
+}
+function cleanLesson(id, b) {
+  const title = str(b?.title, 300);
+  if (!title) return { ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn b\xE0i h\u1ECDc." };
+  const topicId = str(b?.topicId, 64);
+  if (!topicId) return { ok: false, error: "B\xE0i h\u1ECDc c\u1EA7n thu\u1ED9c m\u1ED9t chuy\xEAn \u0111\u1EC1." };
+  const lessonCode = str(b?.lessonCode, 80);
+  if (!lessonCode) return { ok: false, error: "Vui l\xF2ng nh\u1EADp m\xE3 b\xE0i h\u1ECDc." };
+  const grade = [10, 11, 12].includes(Number(b?.grade)) ? Number(b.grade) : 12;
+  const formulas = (Array.isArray(b?.formulas) ? b.formulas : []).slice(0, 40).map((f) => ({
+    name: str(f?.name, 300),
+    latex: str(f?.latex, 2e3),
+    note: str(f?.note, 1e3) || void 0
+  })).filter((f) => f.name || f.latex);
+  const stepByStepExamples = (Array.isArray(b?.stepByStepExamples) ? b.stepByStepExamples : []).slice(0, 30).map((e) => ({
+    title: str(e?.title, 300),
+    problem: str(e?.problem, 4e3),
+    solutionSteps: strList(e?.solutionSteps, 30, 3e3),
+    note: str(e?.note, 2e3) || void 0
+  })).filter((e) => e.title || e.problem);
+  const commonMistakes = (Array.isArray(b?.commonMistakes) ? b.commonMistakes : []).slice(0, 30).map((m) => ({
+    mistakeTitle: str(m?.mistakeTitle, 300),
+    explanation: str(m?.explanation, 3e3),
+    correction: str(m?.correction, 3e3),
+    formulaNote: str(m?.formulaNote, 1e3) || void 0
+  })).filter((m) => m.mistakeTitle || m.explanation);
+  return {
+    ok: true,
+    value: {
+      id,
+      topicId,
+      lessonCode,
+      title,
+      grade,
+      objectives: strList(b?.objectives, 20, 500),
+      theorySummary: str(b?.theorySummary, 3e4),
+      formulas,
+      stepByStepExamples,
+      commonMistakes,
+      relatedPracticeQuestionIds: strList(b?.relatedPracticeQuestionIds, 200, 80),
+      status: "verified"
+    }
+  };
+}
+async function listCurriculum() {
+  return await store.list(COL);
+}
+async function saveCurriculum(kind, id, data, by) {
+  const doc = {
+    key: `${kind}:${id}`,
+    kind,
+    id,
+    deleted: false,
+    data: { ...data, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), createdBy: data.createdBy || by },
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    updatedBy: by
+  };
+  await store.set(COL, doc.key, doc);
+  return doc;
+}
+async function tombstoneCurriculum(kind, id, by) {
+  const doc = { key: `${kind}:${id}`, kind, id, deleted: true, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), updatedBy: by };
+  await store.set(COL, doc.key, doc);
+}
+
 // server/exams.ts
-var COL = "customExams";
+var COL2 = "customExams";
 var DIFFICULTIES = ["nhan_biet", "thong_hieu", "van_dung", "van_dung_cao"];
 var MAX_QUESTIONS = 100;
 function validateExamInput(body, examId) {
-  const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
-  const title = str(body?.title, 200);
+  const str2 = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
+  const title = str2(body?.title, 200);
   if (!title) return { ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn \u0111\u1EC1 thi." };
   const duration = Math.round(Number(body?.durationMinutes));
   if (!Number.isFinite(duration) || duration < 1 || duration > 300) {
@@ -703,9 +785,9 @@ function validateExamInput(body, examId) {
   for (let i = 0; i < rawQuestions.length; i++) {
     const q = rawQuestions[i];
     const n = i + 1;
-    const prompt = str(q?.prompt, 6e3);
+    const prompt = str2(q?.prompt, 6e3);
     if (!prompt) return { ok: false, error: `C\xE2u ${n}: ch\u01B0a c\xF3 n\u1ED9i dung c\xE2u h\u1ECFi.` };
-    const options = Array.isArray(q?.options) ? q.options.map((o) => str(o, 1500)) : [];
+    const options = Array.isArray(q?.options) ? q.options.map((o) => str2(o, 1500)) : [];
     if (options.length !== 4 || options.some((o) => !o)) {
       return { ok: false, error: `C\xE2u ${n}: c\u1EA7n \u0111\u1EE7 4 ph\u01B0\u01A1ng \xE1n A, B, C, D v\xE0 kh\xF4ng \u0111\u1EC3 tr\u1ED1ng.` };
     }
@@ -719,21 +801,21 @@ function validateExamInput(body, examId) {
       prompt,
       options,
       correctOptionIndex: correct,
-      explanation: str(q?.explanation, 8e3),
+      explanation: str2(q?.explanation, 8e3),
       difficulty,
-      lessonCode: str(q?.lessonCode, 80) || void 0
+      lessonCode: str2(q?.lessonCode, 80) || void 0
     });
   }
   const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
   const status = body?.status === "published" ? "published" : "draft";
-  const code = str(body?.code, 40) || `DE-${examId.slice(-6).toUpperCase()}`;
+  const code = str2(body?.code, 40) || `DE-${examId.slice(-6).toUpperCase()}`;
   return {
     ok: true,
     value: {
       id: examId,
       code,
       title,
-      description: str(body?.description, 1e3),
+      description: str2(body?.description, 1e3),
       durationMinutes: duration,
       grade,
       status,
@@ -743,17 +825,17 @@ function validateExamInput(body, examId) {
   };
 }
 async function listCustomExams() {
-  const rows = await store.list(COL);
+  const rows = await store.list(COL2);
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 async function getCustomExam(id) {
-  return await store.get(COL, id);
+  return await store.get(COL2, id);
 }
 async function saveCustomExam(exam) {
-  await store.set(COL, exam.id, exam);
+  await store.set(COL2, exam.id, exam);
 }
 async function deleteCustomExam(id) {
-  await store.delete(COL, id);
+  await store.delete(COL2, id);
 }
 function toPublicExam(exam) {
   return {
@@ -1049,6 +1131,38 @@ async function createExpressApp() {
     await deleteCustomExam(old.id);
     return res.json({ ok: true });
   }));
+  app.get("/api/curriculum", wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    const docs = await listCurriculum();
+    return res.json({
+      topics: docs.filter((d) => d.kind === "topic" && !d.deleted).map((d) => d.data),
+      lessons: docs.filter((d) => d.kind === "lesson" && !d.deleted).map((d) => d.data),
+      deletedTopicIds: docs.filter((d) => d.kind === "topic" && d.deleted).map((d) => d.id),
+      deletedLessonIds: docs.filter((d) => d.kind === "lesson" && d.deleted).map((d) => d.id)
+    });
+  }));
+  const curriculumRoute = (kind) => {
+    const path2 = kind === "topic" ? "/api/curriculum/topics/:id" : "/api/curriculum/lessons/:id";
+    app.put(path2, wrapAsync(async (req, res) => {
+      const user = await authTeacher(req, res);
+      if (!user) return;
+      if (!validId(req.params.id)) return res.status(400).json({ error: "M\xE3 kh\xF4ng h\u1EE3p l\u1EC7 (ch\u1EC9 d\xF9ng ch\u1EEF th\u01B0\u1EDDng kh\xF4ng d\u1EA5u, s\u1ED1 v\xE0 d\u1EA5u g\u1EA1ch ngang)." });
+      const v = kind === "topic" ? cleanTopic(req.params.id, req.body) : cleanLesson(req.params.id, req.body);
+      if (!v.ok) return res.status(400).json({ error: v.error });
+      const doc = await saveCurriculum(kind, req.params.id, v.value, user.email);
+      return res.json(doc.data);
+    }));
+    app.delete(path2, wrapAsync(async (req, res) => {
+      const user = await authTeacher(req, res);
+      if (!user) return;
+      if (!validId(req.params.id)) return res.status(400).json({ error: "M\xE3 kh\xF4ng h\u1EE3p l\u1EC7." });
+      await tombstoneCurriculum(kind, req.params.id, user.email);
+      return res.json({ ok: true });
+    }));
+  };
+  curriculumRoute("topic");
+  curriculumRoute("lesson");
   app.get("/api/admins", async (req, res) => {
     const authHeader = req.headers.authorization;
     const authResult = await verifyFirebaseToken(authHeader);

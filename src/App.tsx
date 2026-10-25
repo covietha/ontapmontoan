@@ -10,6 +10,7 @@ import TopicPractice from './components/TopicPractice';
 import ExamRoom from './components/ExamRoom';
 import MistakeNotebook from './components/MistakeNotebook';
 import ProgressReport from './components/ProgressReport';
+import { CurriculumManager } from './components/CurriculumManager';
 import { ExamManager } from './components/ExamManager';
 import { TeacherManagement } from './components/TeacherManagement';
 import { ClassroomManagement } from './components/ClassroomManagement';
@@ -371,7 +372,7 @@ function AppContent() {
 
               {/* 4. Bổ sung và quản lý kiến thức, chuyên đề */}
               {activeTab === 'teacher_curriculum' && (
-                <TeacherManagement initialSubTab="review" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                <CurriculumManager onModeChange={(m) => setTeacherSub({ tab: 'teacher_curriculum', sub: m })} />
               )}
 
               {/* Kiểm duyệt học liệu */}

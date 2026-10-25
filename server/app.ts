@@ -14,6 +14,7 @@ import {
   saveSchoolConfig
 } from './accounts';
 import { store, StorageNotConfiguredError } from './store';
+import { validId, cleanTopic, cleanLesson, listCurriculum, saveCurriculum, tombstoneCurriculum } from './curriculum';
 import {
   validateExamInput,
   listCustomExams,
@@ -367,6 +368,43 @@ export async function createExpressApp() {
     await deleteCustomExam(old.id);
     return res.json({ ok: true });
   }));
+
+  /* ───────────── Chuyên đề và bài học ───────────── */
+
+  // Mọi người đã đăng nhập đều đọc được; ứng dụng ghép bản sửa này lên dữ liệu mẫu
+  app.get('/api/curriculum', wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+    const docs = await listCurriculum();
+    return res.json({
+      topics: docs.filter((d) => d.kind === 'topic' && !d.deleted).map((d) => d.data),
+      lessons: docs.filter((d) => d.kind === 'lesson' && !d.deleted).map((d) => d.data),
+      deletedTopicIds: docs.filter((d) => d.kind === 'topic' && d.deleted).map((d) => d.id),
+      deletedLessonIds: docs.filter((d) => d.kind === 'lesson' && d.deleted).map((d) => d.id)
+    });
+  }));
+
+  const curriculumRoute = (kind: 'topic' | 'lesson') => {
+    const path = kind === 'topic' ? '/api/curriculum/topics/:id' : '/api/curriculum/lessons/:id';
+    app.put(path, wrapAsync(async (req, res) => {
+      const user = await authTeacher(req, res);
+      if (!user) return;
+      if (!validId(req.params.id)) return res.status(400).json({ error: 'Mã không hợp lệ (chỉ dùng chữ thường không dấu, số và dấu gạch ngang).' });
+      const v = kind === 'topic' ? cleanTopic(req.params.id, req.body) : cleanLesson(req.params.id, req.body);
+      if (!v.ok) return res.status(400).json({ error: v.error });
+      const doc = await saveCurriculum(kind, req.params.id, v.value, user.email);
+      return res.json(doc.data);
+    }));
+    app.delete(path, wrapAsync(async (req, res) => {
+      const user = await authTeacher(req, res);
+      if (!user) return;
+      if (!validId(req.params.id)) return res.status(400).json({ error: 'Mã không hợp lệ.' });
+      await tombstoneCurriculum(kind, req.params.id, user.email);
+      return res.json({ ok: true });
+    }));
+  };
+  curriculumRoute('topic');
+  curriculumRoute('lesson');
 
   // List admins: Accessible to root admin and teachers
   app.get('/api/admins', async (req, res) => {

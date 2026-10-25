@@ -97,7 +97,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: 'teacher_curriculum', audience: 'teacher', label: 'Bài học & chuyên đề',
     title: 'Bài học và chuyên đề',
-    description: 'Soạn, sửa và duyệt nội dung lý thuyết theo chuyên đề.',
+    description: 'Thêm, sửa, xóa chuyên đề và bài học; học sinh thấy ngay khi tải lại trang.',
     section: 'Học liệu', icon: Layers, tone: '#0f766e'
   },
   {
@@ -166,10 +166,12 @@ export const SCHOOL = {
 export const SUB_TABS: Partial<Record<NavTab, Record<string, { title: string; description: string }>>> = Object.fromEntries(
   (['teacher_curriculum', 'teacher_exams', 'teacher_results', 'teacher_admins', 'teacher_review'] as NavTab[]).map((tab) => {
     const defaults: Record<string, string> = {
-      teacher_curriculum: 'review', teacher_review: 'review', teacher_exams: 'list',
+      teacher_curriculum: 'topics', teacher_review: 'review', teacher_exams: 'list',
       teacher_results: 'results', teacher_admins: 'admins'
     };
     const all: Record<string, { title: string; description: string }> = {
+      topics: { title: 'Bài học và chuyên đề', description: 'Thêm, sửa, xóa chuyên đề và bài học học sinh sẽ học.' },
+      lesson: { title: 'Soạn bài học', description: 'Mục tiêu, lý thuyết, công thức, ví dụ và bẫy sai của bài học.' },
       editor: { title: 'Soạn đề thi', description: 'Nhập từ Word hoặc soạn từng câu, rồi lưu nháp hoặc phát hành cho học sinh.' },
       review: { title: 'Kiểm duyệt học liệu', description: 'Xem lại bài học và câu hỏi đang chờ duyệt.' },
       addQuestion: { title: 'Soạn câu hỏi mới', description: 'Thêm từng câu hỏi, đáp án và lời giải vào kho đề.' },
