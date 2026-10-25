@@ -29,6 +29,7 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
   const { topics, lessons, questions, saveTopic, saveLesson, deleteTopic, deleteLesson } = useData();
 
   const [selectedId, setSelectedId] = useState<string>('');
+  const [gradeFilter, setGradeFilter] = useState<'all' | 10 | 11 | 12>('all');
   const [topicDraft, setTopicDraft] = useState<(Topic & { isNew?: boolean }) | null>(null);
   const [lessonDraft, setLessonDraft] = useState<(Lesson & { isNew?: boolean }) | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,6 +46,7 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
     if (!selectedId || !topics.some(t => t.id === selectedId)) setSelectedId(topics[0]?.id || '');
   }, [topics, selectedId]);
 
+  const shownTopics = topics.filter(t => gradeFilter === 'all' || t.grade === gradeFilter);
   const selected = topics.find(t => t.id === selectedId);
   const topicLessons = useMemo(() => lessons.filter(l => l.topicId === selectedId), [lessons, selectedId]);
 
@@ -65,7 +67,7 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
 
   /* ───────────── Chuyên đề ───────────── */
   const newTopic = () => setTopicDraft({
-    isNew: true, id: '', title: '', description: '', order: topics.length + 1, grade: 12, icon: 'Activity', status: 'verified'
+    isNew: true, id: '', title: '', description: '', order: topics.length + 1, grade: gradeFilter === 'all' ? 12 : gradeFilter, icon: 'Activity', status: 'verified'
   });
 
   const submitTopic = async () => {
@@ -279,8 +281,16 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
             <h3 className="font-display font-semibold text-slate-900 flex items-center gap-2"><Layers className="w-4 h-4" /> Chuyên đề ({topics.length})</h3>
             <button onClick={newTopic} className="p-1.5 rounded-md text-blue-700 hover:bg-blue-50" aria-label="Thêm chuyên đề"><Plus className="w-4 h-4" /></button>
           </div>
+          <div className="flex flex-wrap gap-1.5 px-1" role="group" aria-label="Lọc theo lớp">
+            {(['all', 10, 11, 12] as const).map(g => (
+              <button key={String(g)} onClick={() => setGradeFilter(g)} aria-pressed={gradeFilter === g}
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${gradeFilter === g ? 'bg-blue-950 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                {g === 'all' ? 'Tất cả' : `Lớp ${g}`}
+              </button>
+            ))}
+          </div>
           <ul className="space-y-1">
-            {topics.map(t => (
+            {shownTopics.map(t => (
               <li key={t.id}>
                 <button onClick={() => setSelectedId(t.id)} aria-current={t.id === selectedId ? 'true' : undefined}
                   className={`w-full text-left rounded-lg px-3 py-2 text-sm ${t.id === selectedId ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}>
@@ -290,7 +300,7 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
               </li>
             ))}
           </ul>
-          {topics.length === 0 && <p className="px-2 pb-2 text-sm text-slate-500">Chưa có chuyên đề. Bấm dấu + để thêm.</p>}
+          {shownTopics.length === 0 && <p className="px-2 pb-2 text-sm text-slate-500">Chưa có chuyên đề {gradeFilter === 'all' ? '' : `lớp ${gradeFilter} `}. Bấm dấu + để thêm.</p>}
         </aside>
 
         <section className="space-y-4 min-w-0">
@@ -324,7 +334,7 @@ export const CurriculumManager: React.FC<Props> = ({ onModeChange }) => {
                     <li key={l.id} className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center gap-3">
                       <div className="min-w-0 flex-1">
                         <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 break-all">{l.lessonCode}</span>
-                        <h4 className="font-semibold text-slate-900 mt-1.5 leading-snug">{l.title}</h4>
+                        <h4 className="font-semibold text-slate-900 mt-1.5 leading-snug"><MathRenderer content={l.title} inline /></h4>
                         <p className="text-xs text-slate-500 mt-0.5">{l.formulas.length} công thức · {l.stepByStepExamples.length} ví dụ · {l.commonMistakes.length} bẫy sai</p>
                       </div>
                       <div className="flex gap-2">

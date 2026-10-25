@@ -11,7 +11,9 @@ import {
   Layers,
   HelpCircle,
   FileCode2,
-  Edit3
+  Edit3,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -34,6 +36,17 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
 
   const [selectedTopicId, setSelectedTopicId] = useState<string>(topics[0]?.id || 'all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [grade, setGrade] = useState<'all' | 10 | 11 | 12>('all');
+  const [listOpen, setListOpen] = useState(true);
+
+  const topicGrade = (topicId: string) => topics.find(t => t.id === topicId)?.grade;
+  const gradeOf = (l: Lesson) => l.grade ?? topicGrade(l.topicId);
+  const visibleTopics = topics.filter(t => grade === 'all' || t.grade === grade);
+  const gradeLessons = lessons.filter(l => grade === 'all' || gradeOf(l) === grade);
+  const chooseGrade = (g: 'all' | 10 | 11 | 12) => {
+    setGrade(g);
+    setSelectedTopicId('all');
+  };
   
   // Currently opened lesson (default to initialLessonId if provided, or first lesson)
   const [activeLessonId, setActiveLessonId] = useState<string>(() => {
@@ -43,7 +56,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
 
   // Filter lessons
   const filteredLessons = useMemo(() => {
-    return lessons.filter(l => {
+    return gradeLessons.filter(l => {
       const matchTopic = selectedTopicId === 'all' || l.topicId === selectedTopicId;
       const matchSearch = 
         searchQuery.trim() === '' ||
@@ -52,10 +65,11 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
         l.theorySummary.toLowerCase().includes(searchQuery.toLowerCase());
       return matchTopic && matchSearch;
     });
-  }, [lessons, selectedTopicId, searchQuery]);
+  }, [gradeLessons, selectedTopicId, searchQuery]);
 
   const activeLesson = useMemo(() => {
-    return lessons.find(l => l.id === activeLessonId || l.lessonCode === activeLessonId) || filteredLessons[0];
+    const chosen = filteredLessons.find(l => l.id === activeLessonId || l.lessonCode === activeLessonId);
+    return chosen || filteredLessons[0] || lessons.find(l => l.id === activeLessonId || l.lessonCode === activeLessonId);
   }, [lessons, activeLessonId, filteredLessons]);
 
   const currentTopic = topics.find(t => t.id === activeLesson?.topicId);
@@ -97,6 +111,25 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
         </div>
       </div>
 
+      {/* Chọn lớp */}
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Chọn lớp">
+        {([['all', 'Tất cả các lớp'], [10, 'Lớp 10'], [11, 'Lớp 11'], [12, 'Lớp 12']] as const).map(([g, label]) => {
+          const n = lessons.filter(l => g === 'all' || gradeOf(l) === g).length;
+          return (
+            <button
+              key={String(g)}
+              onClick={() => chooseGrade(g)}
+              aria-pressed={grade === g}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                grade === g ? 'bg-blue-950 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {label} <span className="font-normal opacity-70">({n})</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Topic selection chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
@@ -107,10 +140,10 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
               : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
           }`}
         >
-          Tất cả chuyên đề ({lessons.length})
+          Tất cả chuyên đề ({gradeLessons.length})
         </button>
-        {topics.map(t => {
-          const count = lessons.filter(l => l.topicId === t.id).length;
+        {visibleTopics.map(t => {
+          const count = gradeLessons.filter(l => l.topicId === t.id).length;
           return (
             <button
               key={t.id}
@@ -128,18 +161,25 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
       </div>
 
       {/* Main Split Layout: Lesson sidebar + Lesson Detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className={`grid grid-cols-1 gap-6 items-start ${listOpen ? 'lg:grid-cols-12' : ''}`}>
         {/* Left: Lessons List (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-2 max-h-[800px] overflow-y-auto">
+        <div className={`${listOpen ? 'lg:col-span-4' : 'hidden'} bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-2 max-h-[800px] overflow-y-auto`}>
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-sm font-semibold text-slate-700">
               Danh sách bài học ({filteredLessons.length})
             </span>
+            <button
+              onClick={() => setListOpen(false)}
+              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 px-2 py-1 rounded-md hover:bg-slate-100"
+              aria-label="Thu gọn danh sách bài học"
+            >
+              <PanelLeftClose className="w-4 h-4" /> Thu gọn
+            </button>
           </div>
 
           {filteredLessons.length === 0 ? (
             <div className="text-center py-8 text-xs text-slate-400">
-              Không tìm thấy bài học nào phù hợp từ khóa.
+              {searchQuery.trim() ? 'Không tìm thấy bài học nào phù hợp từ khóa.' : 'Chưa có bài học cho lựa chọn này. Thầy cô sẽ cập nhật sớm.'}
             </div>
           ) : (
             filteredLessons.map(lesson => {
@@ -162,11 +202,11 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                       {lesson.formulas.length} công thức
                     </span>
                   </div>
-                  <h3 className="text-xs font-bold mt-1.5 line-clamp-2">
-                    {lesson.title}
+                  <h3 className="text-sm font-bold mt-1.5 line-clamp-2">
+                    <MathRenderer content={lesson.title} inline />
                   </h3>
                   <div className="mt-2 flex items-center gap-2 text-[13px] text-slate-500">
-                    <span className="truncate">{lesson.objectives[0]}</span>
+                    <span className="line-clamp-2"><MathRenderer content={lesson.objectives[0] || ''} inline /></span>
                   </div>
                 </div>
               );
@@ -175,7 +215,16 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
         </div>
 
         {/* Right: Active Lesson Full View (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-8">
+        <div className={`${listOpen ? 'lg:col-span-8' : ''} min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-8`}>
+          {!listOpen && (
+            <button
+              onClick={() => setListOpen(true)}
+              className="hidden lg:inline-flex items-center gap-2 text-sm font-medium text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg"
+              aria-label="Mở danh sách bài học"
+            >
+              <PanelLeftOpen className="w-4 h-4" /> Danh sách bài học ({filteredLessons.length})
+            </button>
+          )}
           {activeLesson ? (
             <>
               {/* Lesson header */}
@@ -187,13 +236,15 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   <span className="text-xs text-slate-500">
                     Chuyên đề: <strong className="text-slate-700">{currentTopic?.title}</strong>
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                    MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-                  </span>
+                  {activeLesson.status !== 'verified' && (
+                    <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
+                    </span>
+                  )}
                 </div>
 
                 <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {activeLesson.title}
+                  <MathRenderer content={activeLesson.title} inline />
                 </h2>
               </div>
 
@@ -207,7 +258,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   {activeLesson.objectives.map((obj, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="text-blue-500 font-bold">•</span>
-                      <span>{obj}</span>
+                      <span className="min-w-0"><MathRenderer content={obj} inline /></span>
                     </li>
                   ))}
                 </ul>
@@ -225,12 +276,12 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                       key={i} 
                       className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-blue-300 transition-all space-y-2"
                     >
-                      <div className="text-xs font-semibold text-slate-700">{f.name}</div>
+                      <div className="text-sm font-semibold text-slate-700"><MathRenderer content={f.name} inline /></div>
                       <div className="p-2.5 rounded-lg bg-white border border-slate-100 text-center font-medium overflow-x-auto">
                         <MathRenderer content={`$$${f.latex}$$`} />
                       </div>
                       {f.note && (
-                        <p className="text-[13px] text-slate-500 italic">💡 {f.note}</p>
+                        <p className="text-[13px] text-slate-500 italic">💡 <MathRenderer content={f.note} inline /></p>
                       )}
                     </div>
                   ))}
@@ -257,7 +308,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                 <div className="space-y-4">
                   {activeLesson.stepByStepExamples.map((ex, i) => (
                     <div key={i} className="p-5 rounded-2xl border border-emerald-100 bg-emerald-50/30 space-y-3">
-                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950">{ex.title}</h4>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-950"><MathRenderer content={ex.title} inline /></h4>
                       <div className="p-3 bg-white rounded-xl border border-emerald-200/60 text-xs sm:text-sm text-slate-800">
                         <MathRenderer content={ex.problem} />
                       </div>
@@ -286,7 +337,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   {activeLesson.commonMistakes.map((m, i) => (
                     <div key={i} className="p-4 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2">
                       <div className="flex items-center gap-2 text-xs font-bold text-rose-900">
-                        <span>❌ {m.mistakeTitle}</span>
+                        <span>❌ <MathRenderer content={m.mistakeTitle} inline /></span>
                       </div>
                       <div className="text-xs text-rose-800">
                         <span className="font-semibold">Học sinh hay sai:</span> <MathRenderer content={m.explanation} inline />
@@ -333,7 +384,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
             </>
           ) : (
             <div className="py-20 text-center text-slate-400 text-sm">
-              Vui lòng chọn một bài học từ danh sách bên trái.
+              Chưa có bài học để hiển thị. Chọn lớp hoặc chuyên đề khác.
             </div>
           )}
         </div>

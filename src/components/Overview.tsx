@@ -1,3 +1,4 @@
+import MathRenderer from './MathRenderer';
 import React from 'react';
 import { 
   BookOpen, 
@@ -230,7 +231,7 @@ export const Overview: React.FC<OverviewProps> = ({
                 {currentTopic.title}
               </h2>
               <p className="text-xs text-slate-600 mt-1 max-w-2xl">
-                {currentTopic.description}
+                <MathRenderer content={currentTopic.description} inline />
               </p>
             </div>
 
@@ -261,10 +262,10 @@ export const Overview: React.FC<OverviewProps> = ({
                     </span>
                   </div>
                   <h4 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                    {lesson.title}
+                    <MathRenderer content={lesson.title} inline />
                   </h4>
                   <p className="text-xs text-slate-500 line-clamp-1">
-                    {lesson.objectives[0]}
+                    <MathRenderer content={lesson.objectives[0] || ''} inline />
                   </p>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-600 group-hover:text-white text-slate-400 flex items-center justify-center transition-all shrink-0">

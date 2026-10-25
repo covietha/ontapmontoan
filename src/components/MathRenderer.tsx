@@ -11,11 +11,13 @@ interface MathRendererProps {
 export const MathRenderer: React.FC<MathRendererProps> = ({ content, className = '', inline = false }) => {
   const renderedContent = useMemo(() => {
     if (!content) return '';
+    // Chấp nhận cả \( ... \) và \[ ... \] như trong tài liệu Word / LaTeX
+    const source = content.replace(/\\\[([\s\S]*?)\\\]/g, (_m, x) => `$$${x}$$`).replace(/\\\(([\s\S]*?)\\\)/g, (_m, x) => `$${x}$`);
 
     // Split text by display math ($$...$$) and inline math ($...$)
     // Regex matches $$...$$ or $...$
     const parts: { type: 'text' | 'inline' | 'display'; text: string }[] = [];
-    let remaining = content;
+    let remaining = source;
 
     while (remaining.length > 0) {
       // Check display math first
