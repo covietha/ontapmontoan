@@ -50,7 +50,7 @@ export const Overview: React.FC<OverviewProps> = ({
       {/* Đầu trang: lời chào và hai việc chính */}
       <section className="relative overflow-hidden rounded-2xl bg-blue-900 paper-grid-dark text-white px-6 py-8 sm:px-10 sm:py-10">
         <div className="relative max-w-3xl">
-          <p className="text-sm text-blue-200">Hệ thống ôn tập môn Toán THPT</p>
+          <p className="text-sm text-blue-200">Hệ thống hỗ trợ ôn tập và thi thử môn Toán THPT</p>
           <h2 className="mt-2 text-3xl sm:text-4xl font-semibold leading-[1.15]">
             Chào {profile?.displayName || 'bạn'}, hôm nay ôn phần nào?
           </h2>

@@ -77,7 +77,7 @@ export const LoginScreen: React.FC = () => {
           <BrandMark size={52} glow />
           <div className="leading-tight">
             <div className="font-display text-xl font-semibold text-white">{SCHOOL.name}</div>
-            <div className="text-sm text-blue-200">Hệ thống ôn tập môn Toán THPT</div>
+            <div className="text-sm text-blue-200">Hệ thống hỗ trợ ôn tập và thi thử môn Toán THPT</div>
           </div>
         </div>
 
@@ -100,7 +100,7 @@ export const LoginScreen: React.FC = () => {
             <BrandMark size={52} glow />
             <div className="leading-tight">
               <div className="font-display text-xl font-semibold text-slate-900">{SCHOOL.name}</div>
-              <div className="text-sm text-slate-600">Hệ thống ôn tập môn Toán THPT</div>
+              <div className="text-sm text-slate-600">Hệ thống hỗ trợ ôn tập và thi thử môn Toán THPT</div>
             </div>
           </div>
 
