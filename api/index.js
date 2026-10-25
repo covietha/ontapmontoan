@@ -1383,12 +1383,20 @@ async function createExpressApp() {
     const context = typeof req.body?.context === "string" ? req.body.context.slice(0, 1500) : "";
     try {
       const reply = await askGemini(messages, context);
-      await bumpUsage(r.user.uid);
-      return res.json({ reply, remaining: left - 1 });
+      let remaining = left - 1;
+      try {
+        await bumpUsage(r.user.uid);
+      } catch (err) {
+        console.error("[chat] Kh\xF4ng ghi \u0111\u01B0\u1EE3c s\u1ED1 l\u01B0\u1EE3t:", err);
+        remaining = left;
+      }
+      return res.json({ reply, remaining });
     } catch (e) {
       const up = e instanceof ChatUpstreamError ? e : null;
       const isStaff = r.user.isRootAdmin || r.user.role === "teacher" || await isTeacherEmail(r.user.email);
-      const reason = isStaff && up?.reason ? ` [Ch\u1EC9 gi\xE1o vi\xEAn th\u1EA5y d\xF2ng n\xE0y] ${up.reason}` : "";
+      const detail = up?.reason || (e instanceof Error ? e.message : String(e));
+      const reason = isStaff && detail ? ` [Ch\u1EC9 gi\xE1o vi\xEAn th\u1EA5y d\xF2ng n\xE0y] ${detail}` : "";
+      console.error("[chat] L\u1ED7i:", detail);
       if (up?.status === 429) return res.status(503).json({ error: `Tr\u1EE3 l\xFD \u0111ang qu\xE1 t\u1EA3i (h\u1EBFt l\u01B0\u1EE3t mi\u1EC5n ph\xED t\u1EA1m th\u1EDDi). Em th\u1EED l\u1EA1i sau \xEDt ph\xFAt nh\xE9.${reason}` });
       return res.status(502).json({ error: `Kh\xF4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c tr\u1EE3 l\xFD. Em th\u1EED l\u1EA1i sau nh\xE9.${reason}` });
     }

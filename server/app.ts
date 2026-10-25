@@ -438,12 +438,16 @@ export async function createExpressApp() {
     const context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 1500) : '';
     try {
       const reply = await askGemini(messages, context);
-      await bumpUsage(r.user.uid);
-      return res.json({ reply, remaining: left - 1 });
+      // Nếu máy chủ chưa có nơi lưu dữ liệu thì không đếm được lượt, nhưng vẫn trả lời học sinh
+      let remaining = left - 1;
+      try { await bumpUsage(r.user.uid); } catch (err) { console.error('[chat] Không ghi được số lượt:', err); remaining = left; }
+      return res.json({ reply, remaining });
     } catch (e) {
       const up = e instanceof ChatUpstreamError ? e : null;
       const isStaff = r.user.isRootAdmin || r.user.role === 'teacher' || (await isTeacherEmail(r.user.email));
-      const reason = isStaff && up?.reason ? ` [Chỉ giáo viên thấy dòng này] ${up.reason}` : '';
+      const detail = up?.reason || (e instanceof Error ? e.message : String(e));
+      const reason = isStaff && detail ? ` [Chỉ giáo viên thấy dòng này] ${detail}` : '';
+      console.error('[chat] Lỗi:', detail);
       if (up?.status === 429) return res.status(503).json({ error: `Trợ lý đang quá tải (hết lượt miễn phí tạm thời). Em thử lại sau ít phút nhé.${reason}` });
       return res.status(502).json({ error: `Không kết nối được trợ lý. Em thử lại sau nhé.${reason}` });
     }
