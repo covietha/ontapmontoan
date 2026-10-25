@@ -159,6 +159,9 @@ export interface Exam {
   questionSnapshots?: Record<string, QuestionSnapshot>; // Snapshot of questions at publishing time
   status: ContentStatus;
   createdAt: string;
+  /** Đề do giáo viên soạn và phát hành trên máy chủ: câu hỏi đi kèm, không có đáp án. */
+  isCustom?: boolean;
+  customQuestions?: Question[];
 }
 
 export interface QuestionAttempt {

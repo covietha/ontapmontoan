@@ -103,7 +103,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: 'teacher_exams', audience: 'teacher', label: 'Soạn đề thi',
     title: 'Soạn đề thi',
-    description: 'Thêm câu hỏi, ghép đề và quản lý kho đề thi thử.',
+    description: 'Soạn đề bằng file Word hoặc thủ công; đề phát hành sẽ hiện trong phòng thi của học sinh.',
     section: 'Học liệu', icon: FileText, tone: '#6d3fb8'
   },
   {
@@ -166,12 +166,14 @@ export const SCHOOL = {
 export const SUB_TABS: Partial<Record<NavTab, Record<string, { title: string; description: string }>>> = Object.fromEntries(
   (['teacher_curriculum', 'teacher_exams', 'teacher_results', 'teacher_admins', 'teacher_review'] as NavTab[]).map((tab) => {
     const defaults: Record<string, string> = {
-      teacher_curriculum: 'review', teacher_review: 'review', teacher_exams: 'addQuestion',
+      teacher_curriculum: 'review', teacher_review: 'review', teacher_exams: 'list',
       teacher_results: 'results', teacher_admins: 'admins'
     };
     const all: Record<string, { title: string; description: string }> = {
+      editor: { title: 'Soạn đề thi', description: 'Nhập từ Word hoặc soạn từng câu, rồi lưu nháp hoặc phát hành cho học sinh.' },
       review: { title: 'Kiểm duyệt học liệu', description: 'Xem lại bài học và câu hỏi đang chờ duyệt.' },
       addQuestion: { title: 'Soạn câu hỏi mới', description: 'Thêm từng câu hỏi, đáp án và lời giải vào kho đề.' },
+      list: { title: 'Soạn đề thi', description: 'Kho đề của thầy cô: soạn mới, sửa, phát hành hoặc gỡ khỏi phòng thi.' },
       results: { title: 'Kết quả thi của học sinh', description: 'Điểm đã được máy chủ chấm và bài làm chi tiết của từng em.' },
       admins: { title: 'Quản trị viên và phân quyền', description: 'Cấp hoặc thu hồi quyền quản trị cho giáo viên.' },
       accounts: { title: 'Quản lý tài khoản trường', description: 'Cấp, khóa và đặt lại mật khẩu tài khoản học sinh, giáo viên.' },

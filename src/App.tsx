@@ -10,6 +10,7 @@ import TopicPractice from './components/TopicPractice';
 import ExamRoom from './components/ExamRoom';
 import MistakeNotebook from './components/MistakeNotebook';
 import ProgressReport from './components/ProgressReport';
+import { ExamManager } from './components/ExamManager';
 import { TeacherManagement } from './components/TeacherManagement';
 import { ClassroomManagement } from './components/ClassroomManagement';
 import { QuestionBankManager } from './components/QuestionBankManager';
@@ -380,7 +381,7 @@ function AppContent() {
 
               {/* 5. Soạn đề thi & Ngân hàng đề */}
               {activeTab === 'teacher_exams' && (
-                <TeacherManagement initialSubTab="addQuestion" onSubTabChange={(sub) => setTeacherSub({ tab: activeTab, sub })} />
+                <ExamManager onModeChange={(m) => setTeacherSub({ tab: 'teacher_exams', sub: m })} />
               )}
 
               {/* 6. Xem kết quả thi của học sinh, bài làm chi tiết */}

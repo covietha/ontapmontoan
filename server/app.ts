@@ -14,6 +14,15 @@ import {
   saveSchoolConfig
 } from './accounts';
 import { store, StorageNotConfiguredError } from './store';
+import {
+  validateExamInput,
+  listCustomExams,
+  getCustomExam,
+  saveCustomExam,
+  deleteCustomExam,
+  toPublicExam,
+  resolveExamForGrading
+} from './exams';
 
 export interface AdminRecord {
   uid: string;
@@ -90,6 +99,8 @@ function wrapHandlers(app: express.Express) {
     };
   }
 }
+
+const wrapAsync = (fn: (req: any, res: any) => Promise<any>) => (req: any, res: any, next: any) => { fn(req, res).catch(next); };
 
 export async function createExpressApp() {
   const app = express();
@@ -176,7 +187,7 @@ export async function createExpressApp() {
     }
 
     // 4. Chống gửi examId tùy ý ngoài danh mục đề thi hợp lệ
-    const exam = OFFICIAL_EXAMS.find(e => e.id === examId);
+    const exam = await resolveExamForGrading(examId);
     if (!exam) {
       return res.status(404).json({
         error: 'Đề thi không tồn tại hoặc chưa được phát hành trên máy chủ'
@@ -209,7 +220,7 @@ export async function createExpressApp() {
 
     exam.questionIds.forEach(qId => {
       const selected = sanitizedAnswers[qId];
-      const key = OFFICIAL_QUESTION_KEYS[qId];
+      const key = exam.keyOf(qId);
       if (key) {
         const isCorrect = typeof selected === 'number' && selected === key.correctOptionIndex;
         if (isCorrect) correctCount += 1;
@@ -292,6 +303,70 @@ export async function createExpressApp() {
     const rows = (isTeacher ? await store.list(RESULTS) : await store.where(RESULTS, 'studentId', uid)) as VerifiedExamResultRecord[];
     return res.json(rows.sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
+
+  /* ───────────── Đề thi do giáo viên soạn ───────────── */
+
+  const authTeacher = async (req: any, res: any) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) {
+      res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+      return null;
+    }
+    const ok = r.user.isRootAdmin || r.user.role === 'teacher' || (await isTeacherEmail(r.user.email));
+    if (!ok) {
+      res.status(403).json({ error: 'Chỉ giáo viên và quản trị viên mới được soạn đề thi.' });
+      return null;
+    }
+    return r.user;
+  };
+
+  // Học sinh: danh sách đề đã phát hành (không kèm đáp án)
+  app.get('/api/exams/published', wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) {
+      return res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+    }
+    const all = await listCustomExams();
+    return res.json(all.filter((e) => e.status === 'published').map(toPublicExam));
+  }));
+
+  // Giáo viên: toàn bộ đề (có đáp án)
+  app.get('/api/exams/manage', wrapAsync(async (req, res) => {
+    if (!(await authTeacher(req, res))) return;
+    return res.json(await listCustomExams());
+  }));
+
+  app.post('/api/exams', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const id = `exam-${Date.now()}`;
+    const v = validateExamInput(req.body, id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const now = new Date().toISOString();
+    const exam = { ...v.value, createdAt: now, updatedAt: now, createdBy: user.email };
+    await saveCustomExam(exam);
+    return res.status(201).json(exam);
+  }));
+
+  app.put('/api/exams/:id', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = await getCustomExam(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    const v = validateExamInput(req.body, old.id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const exam = { ...v.value, createdAt: old.createdAt, createdBy: old.createdBy, updatedAt: new Date().toISOString() };
+    await saveCustomExam(exam);
+    return res.json(exam);
+  }));
+
+  app.delete('/api/exams/:id', wrapAsync(async (req, res) => {
+    if (!(await authTeacher(req, res))) return;
+    const old = await getCustomExam(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Không tìm thấy đề thi.' });
+    await deleteCustomExam(old.id);
+    return res.json({ ok: true });
+  }));
 
   // List admins: Accessible to root admin and teachers
   app.get('/api/admins', async (req, res) => {

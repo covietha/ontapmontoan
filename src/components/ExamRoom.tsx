@@ -26,7 +26,9 @@ interface ExamRoomProps {
 }
 
 export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
-  const { exams, questions, recordExamResult, examResults, recordQuestionAttempt } = useData();
+  const { exams, questions, recordExamResult, examResults, recordQuestionAttempt, refreshExams } = useData();
+
+  useEffect(() => { refreshExams(); }, [refreshExams]);
   const { profile, getIdToken } = useAuth();
 
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
@@ -49,6 +51,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   // Questions in current exam
   const examQuestions: Question[] = useMemo(() => {
     if (!activeExam) return [];
+    if (activeExam.customQuestions) return activeExam.customQuestions;
     return activeExam.questionIds
       .map(id => questions.find(q => q.id === id))
       .filter((q): q is Question => q !== undefined);
@@ -158,7 +161,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
     // Ghi nhận lượt làm câu hỏi để đưa câu sai vào sổ tay lỗi sai dựa trên kết quả máy chủ trả về
     examQuestions.forEach(q => {
       const selected = answers[q.id];
-      if (selected !== undefined) {
+      if (selected !== undefined && !activeExam.isCustom) {
         const srvDetail = returnedDetails[q.id];
         const isQCorrect = srvDetail ? srvDetail.isCorrect : false;
         recordQuestionAttempt({
@@ -245,9 +248,15 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                       <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-blue-50 text-blue-700">
                         {exam.code}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                        MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-                      </span>
+                      {exam.isCustom ? (
+                        <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Đề của giáo viên
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base font-extrabold text-slate-900 leading-snug">
@@ -563,15 +572,15 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                     <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div>
                         <span className="font-bold text-rose-800">⚠️ Bạn đã làm sai câu này!</span>
-                        <p className="text-rose-700 mt-0.5">{currentQ.hintOnWrong}</p>
+                        <p className="text-rose-700 mt-0.5">{currentQ.hintOnWrong || 'Xem lời giải bên dưới để rút kinh nghiệm.'}</p>
                       </div>
-                      <button
+                      {currentQ.lessonId && <button
                         onClick={() => onOpenLesson(currentQ.lessonId)}
                         className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs whitespace-nowrap shadow-xs flex items-center gap-1.5"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         Ôn bài {currentQ.lessonCode}
-                      </button>
+                      </button>}
                     </div>
                   )}
 

@@ -106,7 +106,7 @@ export const LoginScreen: React.FC = () => {
 
       {/* Bên phải: biểu mẫu */}
       <main className="relative flex flex-col justify-center px-5 py-10 sm:px-10 bg-[radial-gradient(ellipse_at_top_right,rgb(232_67_15/0.07),transparent_55%)]">
-        <div className="w-full max-w-[28rem] mx-auto">
+        <div className="w-full max-w-[26rem] mx-auto">
           <div className="lg:hidden flex items-center gap-3 mb-7">
             <BrandMark size={52} glow />
             <div className="leading-tight">
@@ -115,9 +115,9 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] bg-white border border-slate-200 shadow-[0_24px_60px_-24px_rgb(20_28_44/0.35),0_2px_6px_rgb(20_28_44/0.06)] p-6 sm:p-9">
-            <h2 className="font-display text-4xl font-semibold text-slate-900">Đăng nhập</h2>
-            <p className="mt-1.5 text-base text-slate-600">Dùng tài khoản do nhà trường hoặc Tổ Toán cấp.</p>
+          <div className="rounded-[1.75rem] bg-white border border-slate-200 shadow-[0_24px_60px_-24px_rgb(20_28_44/0.35),0_2px_6px_rgb(20_28_44/0.06)] p-6 sm:p-8">
+            <h2 className="font-display text-3xl font-semibold text-slate-900">Đăng nhập</h2>
+            <p className="mt-1.5 text-sm text-slate-600">Dùng tài khoản do nhà trường hoặc Tổ Toán cấp.</p>
 
             <div role="tablist" aria-label="Loại tài khoản" className="seg mt-6">
               {([
@@ -138,7 +138,7 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             {errorMessage && (
-              <div role="alert" className="mt-5 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-base flex items-start gap-2">
+              <div role="alert" className="mt-5 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" aria-hidden="true" />
                 <span>{errorMessage}</span>
               </div>
@@ -146,11 +146,11 @@ export const LoginScreen: React.FC = () => {
 
             <form onSubmit={handleLoginSubmit} className="mt-5 space-y-4">
               <div>
-                <label htmlFor="login-username" className="block text-base font-medium text-slate-800 mb-2 ml-1">
+                <label htmlFor="login-username" className="block text-sm font-medium text-slate-800 mb-1.5 ml-1">
                   {activePortal === 'student' ? 'Mã học sinh' : 'Mã giáo viên'}
                 </label>
                 <div className="relative">
-                  <User className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <User className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-username"
                     type="text"
@@ -166,9 +166,9 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="login-password" className="block text-base font-medium text-slate-800 mb-2 ml-1">Mật khẩu</label>
+                <label htmlFor="login-password" className="block text-sm font-medium text-slate-800 mb-1.5 ml-1">Mật khẩu</label>
                 <div className="relative">
-                  <Key className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <Key className="w-[18px] h-[18px] text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" aria-hidden="true" />
                   <input
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
@@ -209,7 +209,7 @@ export const LoginScreen: React.FC = () => {
             </button>
           </div>
 
-          <p className="mt-5 px-2 text-center text-base text-slate-600 leading-relaxed">
+          <p className="mt-5 px-2 text-center text-sm text-slate-600 leading-relaxed">
             Quên mật khẩu hoặc chưa có tài khoản? Liên hệ Văn phòng Tổ Toán để được cấp lại.
           </p>
         </div>
@@ -228,12 +228,12 @@ export const LoginScreen: React.FC = () => {
               </button>
             </div>
 
-            <p className="text-base text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 leading-relaxed">
               Dành cho quản trị viên hệ thống. Máy chủ sẽ xác thực tài khoản Google của quản trị viên gốc <span className="font-mono text-slate-900 font-medium">viethathd@gmail.com</span>.
             </p>
 
             {adminError && (
-              <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-base">{adminError}</div>
+              <div role="alert" className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm">{adminError}</div>
             )}
 
             <button type="button" onClick={handleGoogleAdminLogin} disabled={loadingGoogle} className="btn-pill btn-pill-dark">

@@ -684,6 +684,123 @@ async function verifyFirebaseToken(authHeader) {
   };
 }
 
+// server/exams.ts
+var COL = "customExams";
+var DIFFICULTIES = ["nhan_biet", "thong_hieu", "van_dung", "van_dung_cao"];
+var MAX_QUESTIONS = 100;
+function validateExamInput(body, examId) {
+  const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : "";
+  const title = str(body?.title, 200);
+  if (!title) return { ok: false, error: "Vui l\xF2ng nh\u1EADp t\xEAn \u0111\u1EC1 thi." };
+  const duration = Math.round(Number(body?.durationMinutes));
+  if (!Number.isFinite(duration) || duration < 1 || duration > 300) {
+    return { ok: false, error: "Th\u1EDDi gian l\xE0m b\xE0i ph\u1EA3i t\u1EEB 1 \u0111\u1EBFn 300 ph\xFAt." };
+  }
+  const rawQuestions = Array.isArray(body?.questions) ? body.questions : [];
+  if (rawQuestions.length === 0) return { ok: false, error: "\u0110\u1EC1 thi c\u1EA7n \xEDt nh\u1EA5t 1 c\xE2u h\u1ECFi." };
+  if (rawQuestions.length > MAX_QUESTIONS) return { ok: false, error: `M\u1ED7i \u0111\u1EC1 t\u1ED1i \u0111a ${MAX_QUESTIONS} c\xE2u.` };
+  const questions = [];
+  for (let i = 0; i < rawQuestions.length; i++) {
+    const q = rawQuestions[i];
+    const n = i + 1;
+    const prompt = str(q?.prompt, 6e3);
+    if (!prompt) return { ok: false, error: `C\xE2u ${n}: ch\u01B0a c\xF3 n\u1ED9i dung c\xE2u h\u1ECFi.` };
+    const options = Array.isArray(q?.options) ? q.options.map((o) => str(o, 1500)) : [];
+    if (options.length !== 4 || options.some((o) => !o)) {
+      return { ok: false, error: `C\xE2u ${n}: c\u1EA7n \u0111\u1EE7 4 ph\u01B0\u01A1ng \xE1n A, B, C, D v\xE0 kh\xF4ng \u0111\u1EC3 tr\u1ED1ng.` };
+    }
+    const correct = Number(q?.correctOptionIndex);
+    if (!Number.isInteger(correct) || correct < 0 || correct > 3) {
+      return { ok: false, error: `C\xE2u ${n}: ch\u01B0a ch\u1ECDn \u0111\xE1p \xE1n \u0111\xFAng.` };
+    }
+    const difficulty = DIFFICULTIES.includes(q?.difficulty) ? q.difficulty : "thong_hieu";
+    questions.push({
+      id: `${examId}-q${n}`,
+      prompt,
+      options,
+      correctOptionIndex: correct,
+      explanation: str(q?.explanation, 8e3),
+      difficulty,
+      lessonCode: str(q?.lessonCode, 80) || void 0
+    });
+  }
+  const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
+  const status = body?.status === "published" ? "published" : "draft";
+  const code = str(body?.code, 40) || `DE-${examId.slice(-6).toUpperCase()}`;
+  return {
+    ok: true,
+    value: {
+      id: examId,
+      code,
+      title,
+      description: str(body?.description, 1e3),
+      durationMinutes: duration,
+      grade,
+      status,
+      questions,
+      source: body?.source === "docx_import" ? "docx_import" : "manual"
+    }
+  };
+}
+async function listCustomExams() {
+  const rows = await store.list(COL);
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+async function getCustomExam(id) {
+  return await store.get(COL, id);
+}
+async function saveCustomExam(exam) {
+  await store.set(COL, exam.id, exam);
+}
+async function deleteCustomExam(id) {
+  await store.delete(COL, id);
+}
+function toPublicExam(exam) {
+  return {
+    id: exam.id,
+    code: exam.code,
+    title: exam.title,
+    description: exam.description,
+    durationMinutes: exam.durationMinutes,
+    grade: exam.grade,
+    totalQuestions: exam.questions.length,
+    createdAt: exam.createdAt,
+    questions: exam.questions.map((q, i) => ({
+      id: q.id,
+      code: `C${i + 1}`,
+      prompt: q.prompt,
+      options: q.options,
+      difficulty: q.difficulty,
+      lessonCode: q.lessonCode
+    }))
+  };
+}
+async function resolveExamForGrading(examId) {
+  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  if (official) {
+    return {
+      id: official.id,
+      title: official.title,
+      durationMinutes: official.durationMinutes,
+      questionIds: official.questionIds,
+      keyOf: (qId) => OFFICIAL_QUESTION_KEYS[qId]
+    };
+  }
+  const custom = await getCustomExam(examId);
+  if (!custom || custom.status !== "published") return null;
+  const byId = new Map(custom.questions.map((q) => [q.id, q]));
+  return {
+    id: custom.id,
+    title: custom.title,
+    durationMinutes: custom.durationMinutes,
+    questionIds: custom.questions.map((q) => q.id),
+    keyOf: (qId) => {
+      const q = byId.get(qId);
+      return q ? { correctOptionIndex: q.correctOptionIndex, explanation: q.explanation } : void 0;
+    }
+  };
+}
+
 // server/app.ts
 var ROOT_ADMIN = {
   uid: "teacher-root-uid-viethat",
@@ -719,6 +836,9 @@ function wrapHandlers(app) {
     };
   }
 }
+var wrapAsync = (fn) => (req, res, next) => {
+  fn(req, res).catch(next);
+};
 async function createExpressApp() {
   const app = express();
   wrapHandlers(app);
@@ -781,7 +901,7 @@ async function createExpressApp() {
     if (!examId || typeof examId !== "string") {
       return res.status(400).json({ error: "Thi\u1EBFu ho\u1EB7c sai \u0111\u1ECBnh d\u1EA1ng m\xE3 \u0111\u1EC1 thi (examId)" });
     }
-    const exam = OFFICIAL_EXAMS.find((e) => e.id === examId);
+    const exam = await resolveExamForGrading(examId);
     if (!exam) {
       return res.status(404).json({
         error: "\u0110\u1EC1 thi kh\xF4ng t\u1ED3n t\u1EA1i ho\u1EB7c ch\u01B0a \u0111\u01B0\u1EE3c ph\xE1t h\xE0nh tr\xEAn m\xE1y ch\u1EE7"
@@ -805,7 +925,7 @@ async function createExpressApp() {
     const detailedResults = {};
     exam.questionIds.forEach((qId) => {
       const selected = sanitizedAnswers[qId];
-      const key = OFFICIAL_QUESTION_KEYS[qId];
+      const key = exam.keyOf(qId);
       if (key) {
         const isCorrect = typeof selected === "number" && selected === key.correctOptionIndex;
         if (isCorrect) correctCount += 1;
@@ -875,6 +995,60 @@ async function createExpressApp() {
     const rows = isTeacher ? await store.list(RESULTS) : await store.where(RESULTS, "studentId", uid);
     return res.json(rows.sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
+  const authTeacher = async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) {
+      res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+      return null;
+    }
+    const ok = r.user.isRootAdmin || r.user.role === "teacher" || await isTeacherEmail(r.user.email);
+    if (!ok) {
+      res.status(403).json({ error: "Ch\u1EC9 gi\xE1o vi\xEAn v\xE0 qu\u1EA3n tr\u1ECB vi\xEAn m\u1EDBi \u0111\u01B0\u1EE3c so\u1EA1n \u0111\u1EC1 thi." });
+      return null;
+    }
+    return r.user;
+  };
+  app.get("/api/exams/published", wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) {
+      return res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    }
+    const all = await listCustomExams();
+    return res.json(all.filter((e) => e.status === "published").map(toPublicExam));
+  }));
+  app.get("/api/exams/manage", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    return res.json(await listCustomExams());
+  }));
+  app.post("/api/exams", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const id = `exam-${Date.now()}`;
+    const v = validateExamInput(req.body, id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const exam = { ...v.value, createdAt: now, updatedAt: now, createdBy: user.email };
+    await saveCustomExam(exam);
+    return res.status(201).json(exam);
+  }));
+  app.put("/api/exams/:id", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = await getCustomExam(req.params.id);
+    if (!old) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1EC1 thi." });
+    const v = validateExamInput(req.body, old.id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const exam = { ...v.value, createdAt: old.createdAt, createdBy: old.createdBy, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    await saveCustomExam(exam);
+    return res.json(exam);
+  }));
+  app.delete("/api/exams/:id", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    const old = await getCustomExam(req.params.id);
+    if (!old) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1EC1 thi." });
+    await deleteCustomExam(old.id);
+    return res.json({ ok: true });
+  }));
   app.get("/api/admins", async (req, res) => {
     const authHeader = req.headers.authorization;
     const authResult = await verifyFirebaseToken(authHeader);

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { 
   Topic, 
   Lesson, 
@@ -38,6 +38,8 @@ interface DataContextType {
   lessons: Lesson[];
   questions: Question[];
   exams: Exam[];
+  /** Tải lại các đề giáo viên đã phát hành từ máy chủ. */
+  refreshExams: () => Promise<void>;
   attempts: QuestionAttempt[];
   examResults: ExamResult[];
   classrooms: Classroom[];
@@ -149,6 +151,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : INITIAL_EXAMS;
   });
 
+  const [publishedExams, setPublishedExams] = useState<Exam[]>([]);
+
   const [classrooms, setClassrooms] = useState<Classroom[]>(() => {
     const saved = localStorage.getItem('thpt_math_classrooms');
     return saved ? JSON.parse(saved) : INITIAL_CLASSROOMS;
@@ -238,6 +242,57 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncServerResults();
     }
   }, [profile?.uid, getIdToken]);
+
+  // Đề do giáo viên soạn: lấy từ máy chủ, không lưu vào localStorage
+  const refreshExams = useCallback(async () => {
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      const res = await fetch('/api/exams/published', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const rows = await res.json();
+      if (!Array.isArray(rows)) return;
+      setPublishedExams(rows.map((e: any): Exam => ({
+        id: e.id,
+        title: e.title,
+        code: e.code,
+        description: e.description || '',
+        durationMinutes: e.durationMinutes,
+        totalQuestions: e.questions.length,
+        grade: e.grade,
+        questionIds: e.questions.map((q: any) => q.id),
+        status: 'verified',
+        createdAt: e.createdAt,
+        isCustom: true,
+        customQuestions: e.questions.map((q: any): Question => ({
+          id: q.id,
+          code: q.code,
+          topicId: '',
+          lessonId: '',
+          lessonCode: q.lessonCode || '',
+          grade: e.grade,
+          questionType: 'mcq',
+          difficulty: q.difficulty,
+          prompt: q.prompt,
+          options: q.options,
+          hintOnWrong: '',
+          prerequisiteKnowledge: '',
+          similarQuestionIds: [],
+          status: 'verified',
+          approvalStatus: 'approved',
+          source: 'manual',
+          createdAt: e.createdAt
+        }))
+      })));
+    } catch {
+      // Không có mạng: giữ danh sách hiện có
+    }
+  }, [getIdToken]);
+
+  useEffect(() => {
+    if (profile?.uid) refreshExams();
+    else setPublishedExams([]);
+  }, [profile?.uid, refreshExams]);
 
   // Lookups
   const getLessonById = (lessonId: string): Lesson | undefined => {
@@ -696,7 +751,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         topics,
         lessons,
         questions,
-        exams,
+        exams: [...publishedExams, ...exams],
+        refreshExams,
         attempts,
         examResults,
         classrooms,
