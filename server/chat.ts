@@ -5,7 +5,7 @@ import { store } from './store';
  * Khóa chỉ nằm ở máy chủ. Mỗi người có hạn mức câu hỏi mỗi ngày để không vượt giới hạn miễn phí.
  */
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
 const DAILY_LIMIT = Math.max(1, parseInt(process.env.CHAT_DAILY_LIMIT || '20', 10) || 20);
 
 export const chatConfigured = () => !!process.env.GEMINI_API_KEY;
@@ -56,32 +56,52 @@ export function cleanMessages(raw: unknown): ChatMessage[] | null {
 }
 
 export class ChatUpstreamError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  /** reason: nguyên nhân kỹ thuật, chỉ hiện cho giáo viên để sửa cấu hình */
+  constructor(public status: number, message: string, public reason: string = '') { super(message); }
 }
 
 export async function askGemini(messages: ChatMessage[], context: string): Promise<string> {
   const key = process.env.GEMINI_API_KEY!;
-  const url = `${process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`;
+  const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
   const system = context ? `${SYSTEM}\n\nNgữ cảnh học sinh đang xem: ${context}` : SYSTEM;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-      generationConfig: { maxOutputTokens: 1200, temperature: 0.4 }
-    }),
-    signal: AbortSignal.timeout(25_000)
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.4 }
   });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    console.error('[chat] Gemini lỗi', res.status, detail.slice(0, 300));
-    throw new ChatUpstreamError(res.status, 'upstream');
+
+  let last: ChatUpstreamError = new ChatUpstreamError(502, 'upstream', 'Không có mô hình nào dùng được');
+  for (const model of MODELS) {
+    let res: Response;
+    try {
+      res = await fetch(`${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body,
+        signal: AbortSignal.timeout(25_000)
+      });
+    } catch (e: any) {
+      console.error('[chat] Không gọi được Gemini:', e?.message || e);
+      throw new ChatUpstreamError(0, 'network', `Máy chủ không gọi được Google (${e?.name === 'TimeoutError' ? 'quá thời gian chờ' : e?.message || 'lỗi mạng'})`);
+    }
+    if (!res.ok) {
+      const raw = await res.text().catch(() => '');
+      let msg = raw.slice(0, 200);
+      try { msg = JSON.parse(raw)?.error?.message || msg; } catch { /* giữ nguyên */ }
+      console.error('[chat] Gemini lỗi', model, res.status, msg);
+      last = new ChatUpstreamError(res.status, 'upstream', `${model}: HTTP ${res.status} – ${msg}`);
+      if (res.status === 404) continue; // mô hình không có: thử mô hình kế tiếp
+      throw last;
+    }
+    const data: any = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p?.text || '').join('').trim();
+    if (!text) {
+      const why = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || 'không có nội dung';
+      throw new ChatUpstreamError(502, 'empty', `${model}: Google trả về rỗng (${why})`);
+    }
+    return text;
   }
-  const data: any = await res.json();
-  const text = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p?.text || '').join('').trim();
-  if (!text) throw new ChatUpstreamError(502, 'empty');
-  return text;
+  throw last;
 }
 
 export { bumpUsage, DAILY_LIMIT };

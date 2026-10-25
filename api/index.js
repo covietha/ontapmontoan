@@ -685,7 +685,7 @@ async function verifyFirebaseToken(authHeader) {
 }
 
 // server/chat.ts
-var MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+var MODELS = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
 var DAILY_LIMIT = Math.max(1, parseInt(process.env.CHAT_DAILY_LIMIT || "20", 10) || 20);
 var chatConfigured = () => !!process.env.GEMINI_API_KEY;
 async function isChatEnabled() {
@@ -725,36 +725,59 @@ function cleanMessages(raw) {
   return msgs;
 }
 var ChatUpstreamError = class extends Error {
-  constructor(status, message) {
+  /** reason: nguyên nhân kỹ thuật, chỉ hiện cho giáo viên để sửa cấu hình */
+  constructor(status, message, reason = "") {
     super(message);
     this.status = status;
+    this.reason = reason;
   }
 };
 async function askGemini(messages, context) {
   const key = process.env.GEMINI_API_KEY;
-  const url = `${process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com"}/v1beta/models/${encodeURIComponent(MODEL)}:generateContent`;
+  const base = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
   const system = context ? `${SYSTEM}
 
 Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-      generationConfig: { maxOutputTokens: 1200, temperature: 0.4 }
-    }),
-    signal: AbortSignal.timeout(25e3)
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.4 }
   });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    console.error("[chat] Gemini l\u1ED7i", res.status, detail.slice(0, 300));
-    throw new ChatUpstreamError(res.status, "upstream");
+  let last = new ChatUpstreamError(502, "upstream", "Kh\xF4ng c\xF3 m\xF4 h\xECnh n\xE0o d\xF9ng \u0111\u01B0\u1EE3c");
+  for (const model of MODELS) {
+    let res;
+    try {
+      res = await fetch(`${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body,
+        signal: AbortSignal.timeout(25e3)
+      });
+    } catch (e) {
+      console.error("[chat] Kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Gemini:", e?.message || e);
+      throw new ChatUpstreamError(0, "network", `M\xE1y ch\u1EE7 kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Google (${e?.name === "TimeoutError" ? "qu\xE1 th\u1EDDi gian ch\u1EDD" : e?.message || "l\u1ED7i m\u1EA1ng"})`);
+    }
+    if (!res.ok) {
+      const raw = await res.text().catch(() => "");
+      let msg = raw.slice(0, 200);
+      try {
+        msg = JSON.parse(raw)?.error?.message || msg;
+      } catch {
+      }
+      console.error("[chat] Gemini l\u1ED7i", model, res.status, msg);
+      last = new ChatUpstreamError(res.status, "upstream", `${model}: HTTP ${res.status} \u2013 ${msg}`);
+      if (res.status === 404) continue;
+      throw last;
+    }
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || "").join("").trim();
+    if (!text) {
+      const why = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || "kh\xF4ng c\xF3 n\u1ED9i dung";
+      throw new ChatUpstreamError(502, "empty", `${model}: Google tr\u1EA3 v\u1EC1 r\u1ED7ng (${why})`);
+    }
+    return text;
   }
-  const data = await res.json();
-  const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || "").join("").trim();
-  if (!text) throw new ChatUpstreamError(502, "empty");
-  return text;
+  throw last;
 }
 
 // server/curriculum.ts
@@ -1363,8 +1386,11 @@ async function createExpressApp() {
       await bumpUsage(r.user.uid);
       return res.json({ reply, remaining: left - 1 });
     } catch (e) {
-      if (e instanceof ChatUpstreamError && e.status === 429) return res.status(503).json({ error: "Tr\u1EE3 l\xFD \u0111ang qu\xE1 t\u1EA3i. Em th\u1EED l\u1EA1i sau \xEDt ph\xFAt nh\xE9." });
-      return res.status(502).json({ error: "Kh\xF4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c tr\u1EE3 l\xFD. Em th\u1EED l\u1EA1i sau nh\xE9." });
+      const up = e instanceof ChatUpstreamError ? e : null;
+      const isStaff = r.user.isRootAdmin || r.user.role === "teacher" || await isTeacherEmail(r.user.email);
+      const reason = isStaff && up?.reason ? ` [Ch\u1EC9 gi\xE1o vi\xEAn th\u1EA5y d\xF2ng n\xE0y] ${up.reason}` : "";
+      if (up?.status === 429) return res.status(503).json({ error: `Tr\u1EE3 l\xFD \u0111ang qu\xE1 t\u1EA3i (h\u1EBFt l\u01B0\u1EE3t mi\u1EC5n ph\xED t\u1EA1m th\u1EDDi). Em th\u1EED l\u1EA1i sau \xEDt ph\xFAt nh\xE9.${reason}` });
+      return res.status(502).json({ error: `Kh\xF4ng k\u1EBFt n\u1ED1i \u0111\u01B0\u1EE3c tr\u1EE3 l\xFD. Em th\u1EED l\u1EA1i sau nh\xE9.${reason}` });
     }
   }));
   app.get("/api/admins", async (req, res) => {

@@ -441,8 +441,11 @@ export async function createExpressApp() {
       await bumpUsage(r.user.uid);
       return res.json({ reply, remaining: left - 1 });
     } catch (e) {
-      if (e instanceof ChatUpstreamError && e.status === 429) return res.status(503).json({ error: 'Trợ lý đang quá tải. Em thử lại sau ít phút nhé.' });
-      return res.status(502).json({ error: 'Không kết nối được trợ lý. Em thử lại sau nhé.' });
+      const up = e instanceof ChatUpstreamError ? e : null;
+      const isStaff = r.user.isRootAdmin || r.user.role === 'teacher' || (await isTeacherEmail(r.user.email));
+      const reason = isStaff && up?.reason ? ` [Chỉ giáo viên thấy dòng này] ${up.reason}` : '';
+      if (up?.status === 429) return res.status(503).json({ error: `Trợ lý đang quá tải (hết lượt miễn phí tạm thời). Em thử lại sau ít phút nhé.${reason}` });
+      return res.status(502).json({ error: `Không kết nối được trợ lý. Em thử lại sau nhé.${reason}` });
     }
   }));
 
