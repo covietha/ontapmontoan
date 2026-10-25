@@ -71,6 +71,7 @@ export async function askGemini(messages: ChatMessage[], context: string): Promi
   });
 
   const tried: string[] = [];
+  const deadline = Date.now() + 22_000; // vercel.json cho hàm chạy tối đa 30 giây
   let last: ChatUpstreamError = new ChatUpstreamError(502, 'upstream', 'Không có mô hình nào dùng được');
   for (const model of MODELS) {
     let res: Response;
@@ -79,12 +80,18 @@ export async function askGemini(messages: ChatMessage[], context: string): Promi
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body,
-        signal: AbortSignal.timeout(25_000)
+        signal: AbortSignal.timeout(Math.min(8_000, Math.max(2_000, deadline - Date.now())))
       });
     } catch (e: any) {
-      console.error('[chat] Không gọi được Gemini:', e?.message || e);
-      throw new ChatUpstreamError(0, 'network', `Máy chủ không gọi được Google (${e?.name === 'TimeoutError' ? 'quá thời gian chờ' : e?.message || 'lỗi mạng'})`);
+      // Quá thời gian chờ hoặc lỗi mạng: thử mô hình kế tiếp nếu còn thời gian
+      const why = e?.name === 'TimeoutError' ? 'quá thời gian chờ' : e?.message || 'lỗi mạng';
+      console.error('[chat] Không gọi được Gemini:', model, why);
+      tried.push(`${model}: ${why}`);
+      last = new ChatUpstreamError(0, 'network', `Máy chủ không gọi được Google (${tried.join(' · ')})`);
+      if (Date.now() >= deadline) break;
+      continue;
     }
+    if (Date.now() > deadline + 4_000) break;
     if (!res.ok) {
       const raw = await res.text().catch(() => '');
       let msg = raw.slice(0, 200);

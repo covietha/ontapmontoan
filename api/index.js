@@ -744,6 +744,7 @@ Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
     generationConfig: { maxOutputTokens: 2048, temperature: 0.4 }
   });
   const tried = [];
+  const deadline = Date.now() + 22e3;
   let last = new ChatUpstreamError(502, "upstream", "Kh\xF4ng c\xF3 m\xF4 h\xECnh n\xE0o d\xF9ng \u0111\u01B0\u1EE3c");
   for (const model of MODELS) {
     let res;
@@ -752,12 +753,17 @@ Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body,
-        signal: AbortSignal.timeout(25e3)
+        signal: AbortSignal.timeout(Math.min(8e3, Math.max(2e3, deadline - Date.now())))
       });
     } catch (e) {
-      console.error("[chat] Kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Gemini:", e?.message || e);
-      throw new ChatUpstreamError(0, "network", `M\xE1y ch\u1EE7 kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Google (${e?.name === "TimeoutError" ? "qu\xE1 th\u1EDDi gian ch\u1EDD" : e?.message || "l\u1ED7i m\u1EA1ng"})`);
+      const why = e?.name === "TimeoutError" ? "qu\xE1 th\u1EDDi gian ch\u1EDD" : e?.message || "l\u1ED7i m\u1EA1ng";
+      console.error("[chat] Kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Gemini:", model, why);
+      tried.push(`${model}: ${why}`);
+      last = new ChatUpstreamError(0, "network", `M\xE1y ch\u1EE7 kh\xF4ng g\u1ECDi \u0111\u01B0\u1EE3c Google (${tried.join(" \xB7 ")})`);
+      if (Date.now() >= deadline) break;
+      continue;
     }
+    if (Date.now() > deadline + 4e3) break;
     if (!res.ok) {
       const raw = await res.text().catch(() => "");
       let msg = raw.slice(0, 200);
