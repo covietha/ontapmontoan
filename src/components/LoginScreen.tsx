@@ -85,7 +85,7 @@ export const LoginScreen: React.FC = () => {
 
         <div className="relative max-w-xl">
           <h1 className="font-display text-4xl xl:text-5xl font-semibold text-white leading-[1.12]">
-            Hệ thống hỗ trợ ôn thi môn Toán THPT
+            Hệ thống hỗ trợ ôn tập và thi thử môn Toán THPT
           </h1>
           <p className="mt-4 text-base text-blue-200 leading-relaxed max-w-lg">
             Hệ thống được phát triển bởi thầy giáo Nguyễn Văn Đăng
