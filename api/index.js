@@ -1087,6 +1087,21 @@ async function resolveExamForGrading(examId) {
     }))
   };
 }
+async function snapshotExamQuestions(examId) {
+  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  if (official) {
+    return official.questionIds.filter((qId) => OFFICIAL_QUESTION_KEYS[qId]).map((qId) => ({ id: qId, type: "mcq" }));
+  }
+  const custom = await getCustomExam(examId);
+  if (!custom) return [];
+  return custom.questions.map((q) => ({
+    id: q.id,
+    type: q.type || "mcq",
+    prompt: q.prompt,
+    options: q.options,
+    statements: q.statements
+  }));
+}
 
 // server/app.ts
 var ROOT_ADMIN = {
@@ -1243,7 +1258,8 @@ async function createExpressApp() {
       verificationStatus: "server_verified",
       gradedAt: (/* @__PURE__ */ new Date()).toISOString(),
       detailedResults,
-      essayCount
+      essayCount,
+      examSnapshot: await snapshotExamQuestions(exam.id)
     };
     await store.set(RESULTS, resultRecord.id, resultRecord);
     const firestoreSync = { synced: false, documentId: resultRecord.id };
@@ -1266,8 +1282,9 @@ async function createExpressApp() {
     } catch (err) {
       firestoreSync.error = err?.message || "Kh\xF4ng ghi \u0111\u01B0\u1EE3c b\u1EA3n sao k\u1EBFt qu\u1EA3";
     }
+    const { examSnapshot: _snap, ...publicRecord } = resultRecord;
     return res.json({
-      ...resultRecord,
+      ...publicRecord,
       firestoreSync
     });
   });
@@ -1282,8 +1299,23 @@ async function createExpressApp() {
     const { uid, email, isRootAdmin } = authResult.user;
     const isTeacher = isRootAdmin || authResult.user.role === "teacher" || await isAdminEmail(email);
     const rows = isTeacher ? await store.list(RESULTS) : await store.where(RESULTS, "studentId", uid);
-    return res.json(rows.sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
+    return res.json(rows.map(({ examSnapshot: _s, ...r }) => r).sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
+  app.get("/api/exams/results/:id/review", wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    }
+    const { uid, email, isRootAdmin } = authResult.user;
+    const isTeacher = isRootAdmin || authResult.user.role === "teacher" || await isAdminEmail(email);
+    const rec = await store.get(RESULTS, req.params.id);
+    if (!rec || !isTeacher && rec.studentId !== uid) {
+      return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y b\xE0i thi." });
+    }
+    const { examSnapshot, ...record } = rec;
+    const questions = examSnapshot && examSnapshot.length ? examSnapshot : await snapshotExamQuestions(rec.examId);
+    return res.json({ record, questions });
+  }));
   const authTeacher = async (req, res) => {
     const r = await verifyFirebaseToken(req.headers.authorization);
     if (!r.success || !r.user) {

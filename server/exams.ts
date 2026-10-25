@@ -292,3 +292,25 @@ export async function resolveExamForGrading(examId: string): Promise<GradableExa
     }))
   };
 }
+
+
+/** Nội dung một câu hỏi dùng để xem lại bài thi. Đề mẫu chỉ có mã câu (nội dung nằm ở ngân hàng câu hỏi phía trình duyệt). */
+export interface ReviewQuestion {
+  id: string;
+  type: ExamQType;
+  prompt?: string;
+  options?: string[];
+  statements?: string[];
+}
+
+export async function snapshotExamQuestions(examId: string): Promise<ReviewQuestion[]> {
+  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  if (official) {
+    return official.questionIds.filter((qId) => OFFICIAL_QUESTION_KEYS[qId]).map((qId) => ({ id: qId, type: 'mcq' as const }));
+  }
+  const custom = await getCustomExam(examId);
+  if (!custom) return [];
+  return custom.questions.map((q) => ({
+    id: q.id, type: q.type || 'mcq', prompt: q.prompt, options: q.options, statements: q.statements
+  }));
+}

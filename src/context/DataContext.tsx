@@ -228,7 +228,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setExamResults(prev => {
               const ids = new Set(prev.map(r => r.id));
               const merged = [...prev];
-              serverData.forEach((s: ExamResult) => {
+              serverData.forEach((raw: any) => {
+                const s = { ...raw, completedAt: raw.completedAt || raw.gradedAt } as ExamResult;
                 if (!ids.has(s.id)) {
                   merged.push(s);
                   ids.add(s.id);

@@ -1,3 +1,4 @@
+import ExamResultReview from './ExamResultReview';
 import { formatAnswer } from '../utils/fileParsers';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
@@ -814,71 +815,8 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
             </div>
           )}
 
-          {/* Answer Breakdown Modal */}
           {selectedResultDetails && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-              <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Chi Tiết Bài Nộp Thi Thử</h3>
-                    <p className="text-xs text-slate-500">
-                      Học sinh: <strong>{selectedResultDetails.studentEmail}</strong> • Điểm: <strong>{selectedResultDetails.score}/10</strong> ({selectedResultDetails.correctCount}/{selectedResultDetails.totalCount} câu)
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedResultDetails(null)}
-                    className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="p-6 overflow-y-auto space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-2 text-slate-600 bg-slate-50 p-3 rounded-2xl">
-                    <div>Mã đề thi: <strong>{selectedResultDetails.examId}</strong></div>
-                    <div>Thời gian hoàn thành: <strong>{Math.round(selectedResultDetails.timeSpentSeconds / 60)} phút</strong></div>
-                    <div>Trạng thái: <strong className="text-emerald-700 font-bold">{selectedResultDetails.verificationStatus}</strong></div>
-                    <div>Thời điểm nộp: <strong>{new Date(selectedResultDetails.completedAt).toLocaleString('vi-VN')}</strong></div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[13px]">
-                      Phương án trả lời của thí sinh:
-                    </h4>
-                    <div className="space-y-2">
-                      {Object.entries(selectedResultDetails.userAnswers as Record<string, any>).map(([qId, optIdx], idx) => {
-                        const targetQ = questions.find(q => q.id === qId);
-                        const letters = ['A', 'B', 'C', 'D'];
-                        return (
-                          <div key={qId} className="p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3 bg-white">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
-                                {targetQ?.code || `Câu ${idx + 1}`}
-                              </span>
-                              <span className="text-slate-600 line-clamp-1 max-w-xs sm:max-w-md">
-                                {targetQ?.prompt.replace(/\$+/g, '') || qId}
-                              </span>
-                            </div>
-                            <div className="shrink-0 font-bold px-2.5 py-1 rounded bg-blue-50 text-blue-700 font-mono">
-                              Bài làm: {formatAnswer(optIdx)}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                  <button
-                    onClick={() => setSelectedResultDetails(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ExamResultReview resultId={selectedResultDetails.id} onClose={() => setSelectedResultDetails(null)} />
           )}
         </div>
       )}

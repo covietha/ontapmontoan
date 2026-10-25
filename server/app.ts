@@ -24,6 +24,8 @@ import {
   deleteCustomExam,
   toPublicExam,
   resolveExamForGrading,
+  snapshotExamQuestions,
+  type ReviewQuestion,
   gradeQuestion,
   sanitizeAnswer,
   type QuestionOutcome
@@ -63,6 +65,8 @@ export interface VerifiedExamResultRecord {
   gradedAt: string;
   detailedResults: Record<string, QuestionOutcome>;
   essayCount?: number;
+  /** Bản chụp nội dung đề lúc chấm (đề giáo viên soạn), để xem lại đúng như học sinh đã làm dù đề sau đó bị sửa. */
+  examSnapshot?: ReviewQuestion[];
   firestoreSync?: {
     synced: boolean;
     documentId: string;
@@ -260,7 +264,8 @@ export async function createExpressApp() {
       verificationStatus: 'server_verified',
       gradedAt: new Date().toISOString(),
       detailedResults,
-      essayCount
+      essayCount,
+      examSnapshot: await snapshotExamQuestions(exam.id)
     };
 
     // 7. Ghi vào sổ cái kết quả chính thức (bắt buộc) và bản công khai cho học sinh trong /examResults
@@ -286,8 +291,9 @@ export async function createExpressApp() {
       firestoreSync.error = err?.message || 'Không ghi được bản sao kết quả';
     }
 
+    const { examSnapshot: _snap, ...publicRecord } = resultRecord;
     return res.json({
-      ...resultRecord,
+      ...publicRecord,
       firestoreSync
     });
   });
@@ -306,8 +312,25 @@ export async function createExpressApp() {
     const { uid, email, isRootAdmin } = authResult.user;
     const isTeacher = isRootAdmin || authResult.user.role === 'teacher' || (await isAdminEmail(email));
     const rows = (isTeacher ? await store.list(RESULTS) : await store.where(RESULTS, 'studentId', uid)) as VerifiedExamResultRecord[];
-    return res.json(rows.sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
+    return res.json(rows.map(({ examSnapshot: _s, ...r }) => r).sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
+
+  // Xem lại chi tiết một bài thi: đề như học sinh đã làm + bài làm + đáp án đúng. Giáo viên xem mọi bài, học sinh chỉ xem bài của mình.
+  app.get('/api/exams/results/:id/review', wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || 'Yêu cầu xác thực danh tính' });
+    }
+    const { uid, email, isRootAdmin } = authResult.user;
+    const isTeacher = isRootAdmin || authResult.user.role === 'teacher' || (await isAdminEmail(email));
+    const rec = (await store.get(RESULTS, req.params.id)) as VerifiedExamResultRecord | null;
+    if (!rec || (!isTeacher && rec.studentId !== uid)) {
+      return res.status(404).json({ error: 'Không tìm thấy bài thi.' });
+    }
+    const { examSnapshot, ...record } = rec;
+    const questions = examSnapshot && examSnapshot.length ? examSnapshot : await snapshotExamQuestions(rec.examId);
+    return res.json({ record, questions });
+  }));
 
   /* ───────────── Đề thi do giáo viên soạn ───────────── */
 
