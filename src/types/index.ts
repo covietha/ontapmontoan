@@ -22,6 +22,7 @@ export interface SchoolAccount {
   classroom?: string;
   classroomId?: string;
   dateOfBirth?: string;
+  studentNumber?: string; // Mã học sinh trong sổ điểm của Sở (khác mã đăng nhập)
   status: AccountStatus;
   createdAt: string;
   createdBy: string;

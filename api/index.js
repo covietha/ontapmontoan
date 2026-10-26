@@ -1721,7 +1721,7 @@ async function createExpressApp() {
       totalCount: visibleAccounts.length
     });
   });
-  const CODE_RE = /^\d{6,12}$/;
+  const CODE_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{3,4}$|^[0-9]{6,12}$/;
   const CLASS_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/;
   const PW_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
   const randomPassword = () => Array.from(crypto2.randomBytes(8)).map((b) => PW_CHARS[b % PW_CHARS.length]).join("");
@@ -1751,7 +1751,8 @@ async function createExpressApp() {
     const clean = rows.map((r) => ({
       code: String(r?.code ?? "").trim(),
       name: String(r?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 100),
-      dob: String(r?.dob ?? "").trim().slice(0, 20)
+      dob: String(r?.dob ?? "").trim().slice(0, 20),
+      nid: String(r?.nationalId ?? "").trim().slice(0, 20)
     }));
     const bad = clean.find((r) => !CODE_RE.test(r.code) || !r.name);
     if (bad) return res.status(400).json({ error: `D\xF2ng kh\xF4ng h\u1EE3p l\u1EC7 (m\xE3 "${bad.code}", t\xEAn "${bad.name}").` });
@@ -1759,12 +1760,12 @@ async function createExpressApp() {
     let updated = 0;
     const now = (/* @__PURE__ */ new Date()).toISOString();
     await inChunks(clean, 15, async (r) => {
-      const id = `sch_acc_${r.code}`;
+      const id = `sch_acc_${r.code.toLowerCase()}`;
       const existing = await store.get("schoolAccounts", id);
       if (existing && existing.role !== "student") throw new Error(`M\xE3 ${r.code} tr\xF9ng v\u1EDBi t\xE0i kho\u1EA3n gi\xE1o vi\xEAn.`);
       let rec;
       if (existing) {
-        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth };
+        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth, studentNumber: r.nid || existing.studentNumber };
         updated += 1;
       } else {
         const password = randomPassword();
@@ -1780,6 +1781,7 @@ async function createExpressApp() {
           createdAt: now,
           createdBy: user.email,
           dateOfBirth: r.dob || void 0,
+          studentNumber: r.nid || void 0,
           passwordHash: hash,
           salt
         };

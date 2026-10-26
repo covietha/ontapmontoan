@@ -3,10 +3,13 @@ import * as XLSX from 'xlsx';
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-interface RosterStudent { code: string; name: string; dob: string }
+/** code: mã đăng nhập theo lớp (12A101…); nationalId: mã học sinh trong sổ điểm của Sở. */
+interface RosterStudent { code: string; nationalId: string; name: string; dob: string }
 interface RosterClass { classroom: string; fileName: string; students: RosterStudent[] }
 interface Created { classroom: string; code: string; name: string; password: string }
 
+/** Mã đăng nhập theo lớp: 12A1 + số thứ tự 2 chữ số = 12A101. */
+const loginCode = (cls: string, stt: number) => `${cls}${String(stt).padStart(2, '0')}`;
 const classOk = (c: string) => /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(c);
 
 /**
@@ -26,15 +29,20 @@ function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass[] {
     const head = rows.findIndex(r => String(r[0]).trim().toLowerCase() === 'lớp' && /mã/i.test(String(r[2] ?? r[1])));
     if (head >= 0) {
       const h = rows[head].map(x => String(x).trim().toLowerCase());
-      const ci = h.findIndex(x => x.startsWith('mã'));
+      const si = h.findIndex(x => x === 'stt');
+      const ci = h.findIndex(x => x.startsWith('mã học sinh') || x.startsWith('mã sổ') || x.startsWith('mã gd'));
       const ni = h.findIndex(x => x.startsWith('họ'));
       const di = h.findIndex(x => x.startsWith('ngày'));
+      const perClass = new Map<string, number>();
       for (const r of rows.slice(head + 1)) {
         const cls = String(r[0] ?? '').trim().toUpperCase();
-        const code = String(r[ci] ?? '').trim().replace(/\.0$/, '');
+        const nid = ci >= 0 ? String(r[ci] ?? '').trim().replace(/\.0$/, '') : '';
         const name = String(r[ni] ?? '').replace(/\s+/g, ' ').trim();
-        if (!classOk(cls) || !/^\d{6,12}$/.test(code) || !name) continue;
-        add(cls, { code, name, dob: String(di >= 0 ? r[di] ?? '' : '').trim() });
+        if (!classOk(cls) || !name) continue;
+        const n = (perClass.get(cls) || 0) + 1;
+        perClass.set(cls, n);
+        const stt = si >= 0 && Number(r[si]) > 0 ? Number(r[si]) : n;
+        add(cls, { code: loginCode(cls, stt), nationalId: nid, name, dob: String(di >= 0 ? r[di] ?? '' : '').trim() });
       }
       continue;
     }
@@ -49,10 +57,11 @@ function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass[] {
     }
     if (!classroom) continue;
     for (const r of rows) {
-      const code = String(r[1] ?? '').trim().replace(/\.0$/, '');
-      if (!/^\d{6,12}$/.test(code)) continue;
+      const nid = String(r[1] ?? '').trim().replace(/\.0$/, '');
+      if (!/^\d{6,12}$/.test(nid)) continue;
       const name = `${String(r[2] ?? '').trim()} ${String(r[3] ?? '').trim()}`.replace(/\s+/g, ' ').trim();
-      if (name) add(classroom, { code, name, dob: String(r[4] ?? '').trim() });
+      const stt = Number(r[0]) > 0 ? Number(r[0]) : (out.get(classroom)?.students.length || 0) + 1;
+      if (name) add(classroom, { code: loginCode(classroom, stt), nationalId: nid, name, dob: String(r[4] ?? '').trim() });
     }
   }
   if (out.size === 0) throw new Error(`File "${fileName}" không đúng mẫu hoặc không có dòng học sinh nào.`);
@@ -135,7 +144,7 @@ export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
     if (!created) return;
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([
-      ['Lớp', 'STT', 'Mã đăng nhập (Mã học sinh)', 'Họ và tên', 'Mật khẩu ban đầu'],
+      ['Lớp', 'STT', 'Mã đăng nhập', 'Họ và tên', 'Mật khẩu ban đầu'],
       ...created.map((c, i, arr) => [c.classroom, arr.slice(0, i).filter(x => x.classroom === c.classroom).length + 1, c.code, c.name, c.password])
     ]);
     sheet['!cols'] = [{ wch: 8 }, { wch: 6 }, { wch: 26 }, { wch: 30 }, { wch: 18 }];
@@ -149,7 +158,7 @@ export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
         <h3 className="font-bold text-slate-900 flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-blue-600" />Nhập danh sách học sinh từ file Excel</h3>
         <p className="text-xs text-slate-600 mt-1">
           Chọn file danh sách học sinh (.xls hoặc .xlsx): một file gộp các lớp theo mẫu của hệ thống, hoặc các file bảng điểm từng lớp. Hệ thống lấy tên lớp, mã học sinh và họ tên, tạo tài khoản
-          (tên đăng nhập là <strong>mã học sinh</strong>, mật khẩu ngẫu nhiên riêng từng em) và xóa các học sinh cũ không còn trong danh sách.
+          (tên đăng nhập là <strong>mã theo lớp</strong>, ví dụ 12A101, 12A102…, mật khẩu ngẫu nhiên riêng từng em) và xóa các học sinh cũ không còn trong danh sách.
         </p>
       </div>
 
@@ -175,7 +184,7 @@ export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
                   <tr key={c.classroom} className="border-t border-slate-100">
                     <td className="px-3 py-1.5 font-mono font-bold">{c.classroom}</td>
                     <td className="px-3 py-1.5 text-right">{c.students.length}</td>
-                    <td className="px-3 py-1.5 text-slate-600">{c.students[0].name} ({c.students[0].code})</td>
+                    <td className="px-3 py-1.5 text-slate-600">{c.students[0].name} ({c.students[0].code} … {c.students[c.students.length - 1].code})</td>
                   </tr>
                 ))}
                 <tr className="border-t border-slate-200 bg-slate-50 font-bold"><td className="px-3 py-1.5">Tổng</td><td className="px-3 py-1.5 text-right">{total}</td><td /></tr>

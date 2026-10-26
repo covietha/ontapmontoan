@@ -778,7 +778,7 @@ export async function createExpressApp() {
 
   // Nhập danh sách học sinh theo lớp từ bảng điểm. Gọi từng lớp một (tránh quá thời gian của máy chủ),
   // sau cùng gọi finalize để xóa các tài khoản học sinh không còn trong danh sách mới.
-  const CODE_RE = /^\d{6,12}$/;
+  const CODE_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{3,4}$|^[0-9]{6,12}$/;
   const CLASS_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/;
   const PW_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // bỏ các ký tự dễ nhầm: i l o 0 1
   const randomPassword = () => Array.from(crypto.randomBytes(8)).map((b) => PW_CHARS[b % PW_CHARS.length]).join('');
@@ -812,7 +812,8 @@ export async function createExpressApp() {
     const clean = rows.map((r) => ({
       code: String(r?.code ?? '').trim(),
       name: String(r?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 100),
-      dob: String(r?.dob ?? '').trim().slice(0, 20)
+      dob: String(r?.dob ?? '').trim().slice(0, 20),
+      nid: String(r?.nationalId ?? '').trim().slice(0, 20)
     }));
     const bad = clean.find((r) => !CODE_RE.test(r.code) || !r.name);
     if (bad) return res.status(400).json({ error: `Dòng không hợp lệ (mã "${bad.code}", tên "${bad.name}").` });
@@ -821,19 +822,19 @@ export async function createExpressApp() {
     let updated = 0;
     const now = new Date().toISOString();
     await inChunks(clean, 15, async (r) => {
-      const id = `sch_acc_${r.code}`;
+      const id = `sch_acc_${r.code.toLowerCase()}`;
       const existing = (await store.get('schoolAccounts', id)) as unknown as StoredAccountRecord | null;
       if (existing && existing.role !== 'student') throw new Error(`Mã ${r.code} trùng với tài khoản giáo viên.`);
       let rec: StoredAccountRecord;
       if (existing) {
-        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth };
+        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth, studentNumber: r.nid || existing.studentNumber };
         updated += 1;
       } else {
         const password = randomPassword();
         const { hash, salt } = hashPassword(password);
         rec = {
           id, username: r.code, displayName: r.name, email: `${r.code}@thptmath360.vn`, role: 'student',
-          classroom, status: 'active', createdAt: now, createdBy: user.email, dateOfBirth: r.dob || undefined,
+          classroom, status: 'active', createdAt: now, createdBy: user.email, dateOfBirth: r.dob || undefined, studentNumber: r.nid || undefined,
           passwordHash: hash, salt
         };
         created.push({ code: r.code, name: r.name, password });
