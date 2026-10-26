@@ -33,8 +33,8 @@ Chỉ cần nếu dùng nút "Cổng quản trị" (đăng nhập Google của q
 ## 5. Kiểm tra sau khi deploy
 
 - Mở `https://<tên-miền>/api/health`. Kết quả mong đợi: `"storage":"firestore"` và `"sessionSecretConfigured":true`.
-- Đăng nhập `GV01` / `ThptMath@2026`, vào **Tài khoản & phân quyền**, tạo một tài khoản thử, tải lại trang và đăng nhập bằng tài khoản đó. Trong Firestore sẽ xuất hiện các bộ sưu tập `schoolAccounts`, `users`, `serverExamResults`, `examResults`, `admins`, `config`.
-- **Đổi mật khẩu các tài khoản mẫu** (`GV01`, `HS12001`…) ngay sau lần đăng nhập đầu tiên: ở lần chạy đầu tiên hệ thống tự nạp 4 tài khoản mẫu với mật khẩu `ThptMath@2026`.
+- Đăng nhập `GVT2` / `ThptMath@2026`, vào **Tài khoản & phân quyền**, tạo một tài khoản thử, tải lại trang và đăng nhập bằng tài khoản đó. Trong Firestore sẽ xuất hiện các bộ sưu tập `schoolAccounts`, `users`, `serverExamResults`, `examResults`, `admins`, `config`.
+- **Đổi mật khẩu các tài khoản mẫu** (`GVT1`…`GVT9`, `HS12001`…) ngay sau lần đăng nhập đầu tiên: ở lần chạy đầu tiên hệ thống tự nạp các tài khoản mẫu với mật khẩu `ThptMath@2026`.
 
 ## Khi báo lỗi
 

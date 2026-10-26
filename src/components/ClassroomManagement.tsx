@@ -60,7 +60,7 @@ export const ClassroomManagement: React.FC = () => {
   const [className, setClassName] = useState('');
   const [classYear, setClassYear] = useState('2025-2026');
   const [classGrade, setClassGrade] = useState<GradeLevel>(12);
-  const [homeroomTeacherName, setHomeroomTeacherName] = useState('Thầy Nguyễn Văn Bình');
+  const [homeroomTeacherName, setHomeroomTeacherName] = useState('Nguyễn Văn Đăng');
   const [classModalError, setClassModalError] = useState<string | null>(null);
 
   // Form: Add Single Student
@@ -139,9 +139,9 @@ export const ClassroomManagement: React.FC = () => {
         name: className.trim(),
         academicYear: classYear.trim(),
         grade: classGrade,
-        homeroomTeacherId: 'sch_acc_gv01',
+        homeroomTeacherId: 'sch_acc_gvt2',
         homeroomTeacherName: homeroomTeacherName.trim(),
-        subjectTeacherIds: ['sch_acc_gv01'],
+        subjectTeacherIds: ['sch_acc_gvt2'],
         status: 'active'
       });
 
@@ -865,7 +865,7 @@ export const ClassroomManagement: React.FC = () => {
                   type="text"
                   value={homeroomTeacherName}
                   onChange={(e) => setHomeroomTeacherName(e.target.value)}
-                  placeholder="Thầy Nguyễn Văn Bình"
+                  placeholder="Nguyễn Văn Đăng"
                   required
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
                 />

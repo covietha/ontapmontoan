@@ -146,7 +146,7 @@ export const LoginScreen: React.FC = () => {
                     autoComplete="username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder={activePortal === 'student' ? 'Ví dụ: HS12001' : 'Ví dụ: GV01'}
+                    placeholder={activePortal === 'student' ? 'Ví dụ: HS12001' : 'Ví dụ: GVT1'}
                     required
                     autoFocus
                     className="field"

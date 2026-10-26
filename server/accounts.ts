@@ -104,25 +104,42 @@ export function verifySchoolToken(token: string): { valid: boolean; uid?: string
 
 // Mật khẩu mặc định của các tài khoản mẫu: 'ThptMath@2026'
 const DEFAULT_SEED_PASSWORD = 'ThptMath@2026';
+/** Danh sách giáo viên Tổ Toán (mã đăng nhập GVT1…GVT9). */
+const TEACHER_ROSTER: { code: string; name: string }[] = [
+  { code: 'GVT1', name: 'Bùi Văn Hiểu' },
+  { code: 'GVT2', name: 'Nguyễn Văn Đăng' },
+  { code: 'GVT3', name: 'Phạm Văn Hưng' },
+  { code: 'GVT4', name: 'Trịnh Thị Mỹ Lệ' },
+  { code: 'GVT5', name: 'Nguyễn Văn Đông' },
+  { code: 'GVT6', name: 'Hoàng Sa' },
+  { code: 'GVT7', name: 'Trần Xuân Lương' },
+  { code: 'GVT8', name: 'Lê Kim Hùng' },
+  { code: 'GVT9', name: 'Trần Thị Huyền' }
+];
+
+function teacherRecord(t: { code: string; name: string }): StoredAccountRecord {
+  const pw = hashPassword(DEFAULT_SEED_PASSWORD);
+  return {
+    id: `sch_acc_${t.code.toLowerCase()}`,
+    username: t.code,
+    displayName: t.name,
+    email: `${t.code.toLowerCase()}@thptmath360.vn`,
+    role: 'teacher',
+    classroom: 'Tổ Toán',
+    status: 'active',
+    createdAt: '2026-10-26T00:00:00.000Z',
+    createdBy: 'viethathd@gmail.com',
+    passwordHash: pw.hash,
+    salt: pw.salt
+  };
+}
+
 function buildSeeds(): StoredAccountRecord[] {
-  const seed1 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed2 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed3 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed4 = hashPassword(DEFAULT_SEED_PASSWORD);
   return [
-  {
-    id: 'sch_acc_gv01',
-    username: 'GV01',
-    displayName: 'Thầy Nguyễn Văn Bình',
-    email: 'gv01@thptmath360.vn',
-    role: 'teacher',
-    classroom: 'Tổ Toán - Chủ nhiệm 12A1',
-    status: 'active',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    createdBy: 'viethathd@gmail.com',
-    passwordHash: seed1.hash,
-    salt: seed1.salt
-  },
+  ...TEACHER_ROSTER.map(teacherRecord),
   {
     id: 'sch_acc_hs12001',
     username: 'HS12001',
@@ -177,12 +194,28 @@ export const DEFAULT_SCHOOL_CONFIG: SchoolAccountConfig = {
 
 const ACCOUNTS = 'schoolAccounts';
 
+/**
+ * Chạy một lần trên hệ thống đã có dữ liệu: thêm giáo viên GVT1…GVT9 (không ghi đè nếu đã có)
+ * và xóa tài khoản mẫu cũ GV01. Có dấu đã chạy nên giáo viên đổi/xóa tài khoản sau đó không bị nạp lại.
+ */
+async function migrateTeacherRoster(): Promise<void> {
+  const marker = await store.get('config', 'teacherRoster');
+  if (marker) return;
+  for (const t of TEACHER_ROSTER) {
+    const rec = teacherRecord(t);
+    if (!(await store.get(ACCOUNTS, rec.id))) await store.set(ACCOUNTS, rec.id, rec as unknown as Doc);
+  }
+  await store.delete(ACCOUNTS, 'sch_acc_gv01');
+  await store.set('config', 'teacherRoster', { id: 'teacherRoster', version: 1, at: new Date().toISOString() } as unknown as Doc);
+}
+
 let seeding: Promise<void> | null = null;
 /** Nạp tài khoản mẫu một lần khi hệ thống mới chạy lần đầu. */
 function ensureSeeded(): Promise<void> {
   if (!seeding) {
     seeding = store
       .seedIfEmpty(ACCOUNTS, buildSeeds().map((a) => ({ id: a.id, data: a })))
+      .then(migrateTeacherRoster)
       .catch((err) => { seeding = null; throw err; });
   }
   return seeding;

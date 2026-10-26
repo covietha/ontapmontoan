@@ -375,25 +375,39 @@ function verifySchoolToken(token) {
   };
 }
 var DEFAULT_SEED_PASSWORD = "ThptMath@2026";
+var TEACHER_ROSTER = [
+  { code: "GVT1", name: "B\xF9i V\u0103n Hi\u1EC3u" },
+  { code: "GVT2", name: "Nguy\u1EC5n V\u0103n \u0110\u0103ng" },
+  { code: "GVT3", name: "Ph\u1EA1m V\u0103n H\u01B0ng" },
+  { code: "GVT4", name: "Tr\u1ECBnh Th\u1ECB M\u1EF9 L\u1EC7" },
+  { code: "GVT5", name: "Nguy\u1EC5n V\u0103n \u0110\xF4ng" },
+  { code: "GVT6", name: "Ho\xE0ng Sa" },
+  { code: "GVT7", name: "Tr\u1EA7n Xu\xE2n L\u01B0\u01A1ng" },
+  { code: "GVT8", name: "L\xEA Kim H\xF9ng" },
+  { code: "GVT9", name: "Tr\u1EA7n Th\u1ECB Huy\u1EC1n" }
+];
+function teacherRecord(t) {
+  const pw = hashPassword(DEFAULT_SEED_PASSWORD);
+  return {
+    id: `sch_acc_${t.code.toLowerCase()}`,
+    username: t.code,
+    displayName: t.name,
+    email: `${t.code.toLowerCase()}@thptmath360.vn`,
+    role: "teacher",
+    classroom: "T\u1ED5 To\xE1n",
+    status: "active",
+    createdAt: "2026-10-26T00:00:00.000Z",
+    createdBy: "viethathd@gmail.com",
+    passwordHash: pw.hash,
+    salt: pw.salt
+  };
+}
 function buildSeeds() {
-  const seed1 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed2 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed3 = hashPassword(DEFAULT_SEED_PASSWORD);
   const seed4 = hashPassword(DEFAULT_SEED_PASSWORD);
   return [
-    {
-      id: "sch_acc_gv01",
-      username: "GV01",
-      displayName: "Th\u1EA7y Nguy\u1EC5n V\u0103n B\xECnh",
-      email: "gv01@thptmath360.vn",
-      role: "teacher",
-      classroom: "T\u1ED5 To\xE1n - Ch\u1EE7 nhi\u1EC7m 12A1",
-      status: "active",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      createdBy: "viethathd@gmail.com",
-      passwordHash: seed1.hash,
-      salt: seed1.salt
-    },
+    ...TEACHER_ROSTER.map(teacherRecord),
     {
       id: "sch_acc_hs12001",
       username: "HS12001",
@@ -440,10 +454,20 @@ var DEFAULT_SCHOOL_CONFIG = {
   defaultStudentPassword: DEFAULT_SEED_PASSWORD
 };
 var ACCOUNTS = "schoolAccounts";
+async function migrateTeacherRoster() {
+  const marker = await store.get("config", "teacherRoster");
+  if (marker) return;
+  for (const t of TEACHER_ROSTER) {
+    const rec = teacherRecord(t);
+    if (!await store.get(ACCOUNTS, rec.id)) await store.set(ACCOUNTS, rec.id, rec);
+  }
+  await store.delete(ACCOUNTS, "sch_acc_gv01");
+  await store.set("config", "teacherRoster", { id: "teacherRoster", version: 1, at: (/* @__PURE__ */ new Date()).toISOString() });
+}
 var seeding = null;
 function ensureSeeded() {
   if (!seeding) {
-    seeding = store.seedIfEmpty(ACCOUNTS, buildSeeds().map((a) => ({ id: a.id, data: a }))).catch((err) => {
+    seeding = store.seedIfEmpty(ACCOUNTS, buildSeeds().map((a) => ({ id: a.id, data: a }))).then(migrateTeacherRoster).catch((err) => {
       seeding = null;
       throw err;
     });
