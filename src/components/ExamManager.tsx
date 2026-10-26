@@ -108,7 +108,7 @@ interface Props {
 
 export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   const { getIdToken } = useAuth();
-  const { refreshExams, allOfficialExams, getQuestionById } = useData();
+  const { refreshExams, allOfficialExams, hiddenOfficialIds, getQuestionById } = useData();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [exams, setExams] = useState<ServerExam[]>([]);
@@ -119,6 +119,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [importInfo, setImportInfo] = useState<string[]>([]);
   const [preview, setPreview] = useState<Record<string, boolean>>({});
+  const [confirmOfficial, setConfirmOfficial] = useState<{ id: string; title: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ServerExam | null>(null);
   const [previewData, setPreviewData] = useState<{ title: string; durationMinutes: number; questions: PreviewQuestion[] } | null>(null);
 
@@ -197,6 +198,18 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
       await Promise.all([load(), refreshExams()]);
       openEditor(created);
     } catch (e: any) {
+      setNotice({ type: 'err', text: e.message });
+    }
+  };
+
+  const deleteOfficial = async (id: string) => {
+    try {
+      await api(`/api/exams/official/${id}/hidden`, { method: 'PUT', body: JSON.stringify({ hidden: true }) });
+      setConfirmOfficial(null);
+      await refreshExams();
+      setNotice({ type: 'ok', text: 'Đã xóa đề mẫu.' });
+    } catch (e: any) {
+      setConfirmOfficial(null);
       setNotice({ type: 'err', text: e.message });
     }
   };
@@ -683,12 +696,12 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
         </ul>
       )}
 
-      {allOfficialExams.some(ex => !exams.some(m => m.id === ex.id)) && (
+      {allOfficialExams.some(ex => !hiddenOfficialIds.includes(ex.id) && !exams.some(m => m.id === ex.id)) && (
         <section className="space-y-3 pt-2">
           <h3 className="font-display font-semibold text-slate-900">Đề mẫu của hệ thống</h3>
-          <p className="text-sm text-slate-600">Bấm "Sửa" lần đầu, đề mẫu được đưa vào danh sách đề của thầy (giữ nguyên mã đề, đáp án và lời giải), từ đó sửa trực tiếp như mọi đề khác.</p>
+          <p className="text-sm text-slate-600">Thầy có thể sửa hoặc xóa tùy ý. Bấm "Sửa" lần đầu, đề mẫu được đưa vào danh sách đề của thầy (giữ mã đề, đáp án và lời giải), từ đó sửa, gỡ, xóa như mọi đề khác.</p>
           <ul className="grid md:grid-cols-2 gap-4">
-            {allOfficialExams.filter(ex => !exams.some(m => m.id === ex.id)).map(ex => (
+            {allOfficialExams.filter(ex => !hiddenOfficialIds.includes(ex.id) && !exams.some(m => m.id === ex.id)).map(ex => (
               <li key={ex.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3">
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 self-start">{ex.code}</span>
                 <h4 className="font-display font-semibold text-slate-900 leading-snug">{ex.title}</h4>
@@ -698,11 +711,25 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
                 </div>
                 <div className="mt-auto">
                   <button onClick={() => openOfficial(ex)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5"><Pencil className="w-3.5 h-3.5" />Sửa</button>
+                  <button onClick={() => setConfirmOfficial(ex)} className="inline-flex items-center gap-1.5 rounded-lg text-rose-700 hover:bg-rose-50 text-sm font-medium px-3 py-1.5 ml-2"><Trash2 className="w-3.5 h-3.5" />Xóa</button>
                 </div>
               </li>
             ))}
           </ul>
         </section>
+      )}
+
+      {confirmOfficial && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <h3 className="font-display font-semibold text-slate-900">Xóa đề mẫu này?</h3>
+            <p className="text-sm text-slate-600">"{confirmOfficial.title}" sẽ biến mất khỏi phòng thi của học sinh và khỏi danh sách đề mẫu. Điểm các em đã làm vẫn được giữ.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmOfficial(null)} className="rounded-lg border border-slate-300 text-sm font-medium px-4 py-2">Giữ lại</button>
+              <button onClick={() => deleteOfficial(confirmOfficial.id)} className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold px-4 py-2">Xóa đề</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmDelete && (
