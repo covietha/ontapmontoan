@@ -693,7 +693,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   if (!isFinished) {
     return (
       <div className="exam-focus flex flex-col lg:flex-row gap-3 lg:h-[calc(100vh-1.25rem)]">
-        <aside className="lg:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 flex flex-col gap-3 lg:overflow-y-auto">
+        <aside className="order-1 lg:order-2 lg:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 flex flex-col gap-3 lg:overflow-y-auto">
           <div className="min-w-0">
             <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{activeExam.code}</span>
             <h2 className="text-sm font-bold text-slate-900 mt-1 leading-snug line-clamp-3">{activeExam.title}</h2>
@@ -731,7 +731,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
           {questionGrid}
         </aside>
 
-        <section className="flex-1 min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col min-h-0">
+        <section className="order-2 lg:order-1 flex-1 min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-6">
             {viewMode === 'all' ? (
               ordered.map((q, idx) => (
