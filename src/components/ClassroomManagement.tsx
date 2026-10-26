@@ -1,3 +1,4 @@
+import { ClassGroups } from './ClassGroups';
 import React, { useState, useMemo } from 'react';
 import { 
   Layers, 
@@ -44,8 +45,8 @@ export const ClassroomManagement: React.FC = () => {
     createAccountsBatchForClassroom 
   } = useData();
 
-  // Tab: 'classrooms' | 'students' | 'import_excel' | 'batch_accounts'
-  const [activeTab, setActiveTab] = useState<'classrooms' | 'students' | 'import_excel' | 'batch_accounts'>('classrooms');
+  // Tab: 'classrooms' | 'students' | 'import_excel' | 'batch_accounts' | 'groups'
+  const [activeTab, setActiveTab] = useState<'classrooms' | 'students' | 'import_excel' | 'batch_accounts' | 'groups'>('classrooms');
 
   // Selected Classroom for viewing students or batch actions
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>(classrooms[0]?.id || '');
@@ -321,6 +322,18 @@ export const ClassroomManagement: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('groups')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'groups'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Lớp do thầy cô tạo</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('import_excel')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'import_excel'
@@ -539,6 +552,8 @@ export const ClassroomManagement: React.FC = () => {
       )}
 
       {/* TAB 3: IMPORT EXCEL */}
+      {activeTab === 'groups' && <ClassGroups />}
+
       {activeTab === 'import_excel' && (
         <div className="space-y-6">
           {/* Guide & Template Download */}

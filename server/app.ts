@@ -489,6 +489,66 @@ export async function createExpressApp() {
     return res.json({ ok: true });
   }));
 
+  /* ───────────── Lớp do giáo viên tạo (nhóm học sinh lấy từ các lớp trong danh sách) ───────────── */
+
+  const GROUPS = 'classGroups';
+  const cleanGroup = async (body: any) => {
+    const name = String(body?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!name) return { error: 'Vui lòng nhập tên lớp.' } as const;
+    const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
+    const academicYear = String(body?.academicYear ?? '').trim().slice(0, 20) || '2025-2026';
+    const description = String(body?.description ?? '').trim().slice(0, 300);
+    const wanted: string[] = Array.isArray(body?.studentIds) ? body.studentIds.map((x: any) => String(x)) : [];
+    if (wanted.length > 600) return { error: 'Mỗi lớp tối đa 600 học sinh.' } as const;
+    const valid = new Set((await listAccounts()).filter((a) => a.role === 'student').map((a) => a.id));
+    const studentIds = Array.from(new Set(wanted.filter((id) => valid.has(id))));
+    return { value: { name, grade, academicYear, description, studentIds } } as const;
+  };
+
+  app.get('/api/classes', wrapAsync(async (req, res) => {
+    if (!(await authTeacher(req, res))) return;
+    const valid = new Set((await listAccounts()).filter((a) => a.role === 'student').map((a) => a.id));
+    const rows = ((await store.list(GROUPS)) as any[])
+      .map((g) => ({ ...g, studentIds: (g.studentIds || []).filter((id: string) => valid.has(id)) }))
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    return res.json({ classes: rows });
+  }));
+
+  app.post('/api/classes', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const v = await cleanGroup(req.body);
+    if ('error' in v) return res.status(400).json({ error: v.error });
+    const id = `grp_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const now = new Date().toISOString();
+    const doc = { id, ...v.value, createdBy: user.email, createdAt: now, updatedAt: now };
+    await store.set(GROUPS, id, doc as any);
+    return res.status(201).json(doc);
+  }));
+
+  app.put('/api/classes/:id', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = (await store.get(GROUPS, String(req.params.id))) as any;
+    if (!old) return res.status(404).json({ error: 'Không tìm thấy lớp.' });
+    if (!user.isRootAdmin && old.createdBy !== user.email) return res.status(403).json({ error: 'Chỉ người tạo lớp hoặc quản trị viên mới sửa được lớp này.' });
+    const v = await cleanGroup(req.body);
+    if ('error' in v) return res.status(400).json({ error: v.error });
+    const doc = { ...old, ...v.value, updatedAt: new Date().toISOString() };
+    await store.set(GROUPS, old.id, doc as any);
+    return res.json(doc);
+  }));
+
+  app.delete('/api/classes/:id', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = (await store.get(GROUPS, String(req.params.id))) as any;
+    if (!old) return res.status(404).json({ error: 'Không tìm thấy lớp.' });
+    if (!user.isRootAdmin && old.createdBy !== user.email) return res.status(403).json({ error: 'Chỉ người tạo lớp hoặc quản trị viên mới xóa được lớp này.' });
+    await store.delete(GROUPS, old.id);
+    return res.json({ ok: true });
+  }));
+
   /* ───────────── Chuyên đề và bài học ───────────── */
 
   // Mọi người đã đăng nhập đều đọc được; ứng dụng ghép bản sửa này lên dữ liệu mẫu

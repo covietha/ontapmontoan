@@ -1493,6 +1493,57 @@ async function createExpressApp() {
     await deleteCustomExam(old.id);
     return res.json({ ok: true });
   }));
+  const GROUPS = "classGroups";
+  const cleanGroup = async (body) => {
+    const name = String(body?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+    if (!name) return { error: "Vui l\xF2ng nh\u1EADp t\xEAn l\u1EDBp." };
+    const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
+    const academicYear = String(body?.academicYear ?? "").trim().slice(0, 20) || "2025-2026";
+    const description = String(body?.description ?? "").trim().slice(0, 300);
+    const wanted = Array.isArray(body?.studentIds) ? body.studentIds.map((x) => String(x)) : [];
+    if (wanted.length > 600) return { error: "M\u1ED7i l\u1EDBp t\u1ED1i \u0111a 600 h\u1ECDc sinh." };
+    const valid = new Set((await listAccounts()).filter((a) => a.role === "student").map((a) => a.id));
+    const studentIds = Array.from(new Set(wanted.filter((id) => valid.has(id))));
+    return { value: { name, grade, academicYear, description, studentIds } };
+  };
+  app.get("/api/classes", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    const valid = new Set((await listAccounts()).filter((a) => a.role === "student").map((a) => a.id));
+    const rows = (await store.list(GROUPS)).map((g) => ({ ...g, studentIds: (g.studentIds || []).filter((id) => valid.has(id)) })).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    return res.json({ classes: rows });
+  }));
+  app.post("/api/classes", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const v = await cleanGroup(req.body);
+    if ("error" in v) return res.status(400).json({ error: v.error });
+    const id = `grp_${Date.now()}_${crypto2.randomBytes(3).toString("hex")}`;
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const doc = { id, ...v.value, createdBy: user.email, createdAt: now, updatedAt: now };
+    await store.set(GROUPS, id, doc);
+    return res.status(201).json(doc);
+  }));
+  app.put("/api/classes/:id", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = await store.get(GROUPS, String(req.params.id));
+    if (!old) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y l\u1EDBp." });
+    if (!user.isRootAdmin && old.createdBy !== user.email) return res.status(403).json({ error: "Ch\u1EC9 ng\u01B0\u1EDDi t\u1EA1o l\u1EDBp ho\u1EB7c qu\u1EA3n tr\u1ECB vi\xEAn m\u1EDBi s\u1EEDa \u0111\u01B0\u1EE3c l\u1EDBp n\xE0y." });
+    const v = await cleanGroup(req.body);
+    if ("error" in v) return res.status(400).json({ error: v.error });
+    const doc = { ...old, ...v.value, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    await store.set(GROUPS, old.id, doc);
+    return res.json(doc);
+  }));
+  app.delete("/api/classes/:id", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const old = await store.get(GROUPS, String(req.params.id));
+    if (!old) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y l\u1EDBp." });
+    if (!user.isRootAdmin && old.createdBy !== user.email) return res.status(403).json({ error: "Ch\u1EC9 ng\u01B0\u1EDDi t\u1EA1o l\u1EDBp ho\u1EB7c qu\u1EA3n tr\u1ECB vi\xEAn m\u1EDBi x\xF3a \u0111\u01B0\u1EE3c l\u1EDBp n\xE0y." });
+    await store.delete(GROUPS, old.id);
+    return res.json({ ok: true });
+  }));
   app.get("/api/curriculum", wrapAsync(async (req, res) => {
     const r = await verifyFirebaseToken(req.headers.authorization);
     if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
