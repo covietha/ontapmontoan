@@ -1,3 +1,4 @@
+import { ChangePasswordModal } from './ChangePasswordModal';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
@@ -43,38 +44,7 @@ export const AccountManagement: React.FC = () => {
   const [resetPasswordInput, setResetPasswordInput] = useState('');
   const [actionStatus, setActionStatus] = useState<string | null>(null);
 
-  // Tự đổi mật khẩu của chính mình
   const [selfOpen, setSelfOpen] = useState(false);
-  const [selfOld, setSelfOld] = useState('');
-  const [selfNew, setSelfNew] = useState('');
-  const [selfNew2, setSelfNew2] = useState('');
-  const [selfError, setSelfError] = useState<string | null>(null);
-  const [selfBusy, setSelfBusy] = useState(false);
-  const closeSelf = () => { setSelfOpen(false); setSelfOld(''); setSelfNew(''); setSelfNew2(''); setSelfError(null); };
-  const handleSelfChange = async () => {
-    setSelfError(null);
-    if (!selfOld) return setSelfError('Nhập mật khẩu hiện tại.');
-    if (selfNew.trim().length < 8) return setSelfError('Mật khẩu mới cần ít nhất 8 ký tự.');
-    if (selfNew !== selfNew2) return setSelfError('Hai lần nhập mật khẩu mới chưa giống nhau.');
-    setSelfBusy(true);
-    try {
-      const token = await getIdToken();
-      const res = await fetch('/api/account/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ currentPassword: selfOld, newPassword: selfNew })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setSelfError(data?.error || `Máy chủ trả lỗi ${res.status}`); return; }
-      closeSelf();
-      setActionStatus('✅ Đã lưu mật khẩu mới của thầy/cô. Lần đăng nhập sau dùng mật khẩu này.');
-      setTimeout(() => setActionStatus(null), 8000);
-    } catch (e: any) {
-      setSelfError('Lỗi mạng: ' + (e.message || e));
-    } finally {
-      setSelfBusy(false);
-    }
-  };
 
   const fetchAccounts = async () => {
     setLoading(true);
@@ -554,7 +524,7 @@ export const AccountManagement: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1.5">
-                      <button
+                      {(isRootAdmin || account.role === 'student') && <button
                         onClick={() => {
                           setResetModalAccount(account);
                           setResetPasswordInput('');
@@ -563,8 +533,8 @@ export const AccountManagement: React.FC = () => {
                         title="Đặt lại mật khẩu"
                       >
                         <Key className="w-3 h-3 inline mr-1" />
-                        Đổi MK
-                      </button>
+                        Đặt lại MK
+                      </button>}
 
                       {isRootAdmin && (
                         <button
@@ -587,32 +557,7 @@ export const AccountManagement: React.FC = () => {
         </div>
       </div>
 
-      {selfOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2"><Key className="w-4 h-4 text-blue-600" />Đổi mật khẩu của tôi</h3>
-              <button onClick={closeSelf} className="text-slate-400 hover:text-slate-600" aria-label="Đóng">✕</button>
-            </div>
-            {[
-              { l: 'Mật khẩu hiện tại', v: selfOld, set: setSelfOld, ac: 'current-password' },
-              { l: 'Mật khẩu mới (ít nhất 8 ký tự)', v: selfNew, set: setSelfNew, ac: 'new-password' },
-              { l: 'Nhập lại mật khẩu mới', v: selfNew2, set: setSelfNew2, ac: 'new-password' }
-            ].map(f => (
-              <div key={f.l}>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{f.l}</label>
-                <input type="password" autoComplete={f.ac} value={f.v} onChange={e => f.set(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none font-mono" />
-              </div>
-            ))}
-            {selfError && <p role="alert" className="text-xs font-semibold text-rose-700">{selfError}</p>}
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={closeSelf} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
-              <button type="button" disabled={selfBusy} onClick={handleSelfChange} className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white">{selfBusy ? 'Đang lưu…' : 'Xác nhận đổi'}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {selfOpen && <ChangePasswordModal onClose={() => setSelfOpen(false)} />}
 
       {/* Reset Password Modal */}
       {resetModalAccount && (

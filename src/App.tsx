@@ -18,16 +18,18 @@ import { TeacherManagement } from './components/TeacherManagement';
 import { ClassroomManagement } from './components/ClassroomManagement';
 import { QuestionBankManager } from './components/QuestionBankManager';
 import { AccountManagement } from './components/AccountManagement';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import StudentExamHistory from './components/StudentExamHistory';
 import LoginScreen from './components/LoginScreen';
 import { useData } from './context/DataContext';
 import { 
   Menu, LogOut, ShieldAlert, Target, FileText, ChevronRight,
-  PanelLeftClose, PanelLeftOpen, Wifi, WifiOff, CalendarDays
+  PanelLeftClose, PanelLeftOpen, Wifi, WifiOff, CalendarDays, Key
 } from 'lucide-react';
 
 function AppContent() {
   const { isAuthenticated, isTeacher, isRootAdmin, loading, profile, logout } = useAuth();
+  const [pwOpen, setPwOpen] = useState(false);
   const { attempts, questions } = useData();
   // Chỉ hiện màn hình khởi động ở lần tải đầu. Khi đang đăng nhập, giữ nguyên màn hình đăng nhập
   // để không mất nội dung đã gõ và vẫn hiện được thông báo sai mật khẩu.
@@ -235,6 +237,14 @@ function AppContent() {
                 </span>
               )}
               <button
+                onClick={() => setPwOpen(true)}
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-200 rounded-lg flex items-center gap-1.5"
+                title="Đổi mật khẩu"
+              >
+                <Key className="w-4 h-4" />
+                <span className="hidden sm:inline">Đổi mật khẩu</span>
+              </button>
+              <button
                 onClick={logout}
                 className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 rounded-lg flex items-center gap-1.5"
                 title="Đăng xuất khỏi hệ thống"
@@ -245,6 +255,8 @@ function AppContent() {
             </div>
           </div>
         </header>
+
+        {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
 
         {/* Page Content Body */}
         <main className={examFocus ? 'flex-1 p-2 sm:p-2.5 w-full space-y-0' : 'flex-1 p-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4'}>
