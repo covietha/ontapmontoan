@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import { OFFICIAL_QUESTION_KEYS, OFFICIAL_EXAMS } from './answerKeys';
 import { verifyFirebaseToken } from './auth';
 import {
@@ -115,6 +116,8 @@ const wrapAsync = (fn: (req: any, res: any) => Promise<any>) => (req: any, res: 
 export async function createExpressApp() {
   const app = express();
   wrapHandlers(app);
+  // Hình trong đề thi gửi lên dạng data URL nên cho phép thân yêu cầu lớn hơn mặc định
+  app.use('/api/exam-images', express.json({ limit: '1.2mb' }));
   app.use(express.json());
 
   // Health check endpoint
@@ -347,6 +350,38 @@ export async function createExpressApp() {
     }
     return r.user;
   };
+
+
+  // Giáo viên: lưu hình của câu hỏi (từ file Word). Mã hình = băm nội dung nên lưu lại cùng hình không bị trùng.
+  const IMG_COL = 'examImages';
+  const IMG_MAX_BYTES = 700 * 1024;
+  app.post('/api/exam-images', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const m = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ''));
+    if (!m) return res.status(400).json({ error: 'Hình không đúng định dạng (chỉ nhận PNG, JPEG, GIF, WEBP, SVG).' });
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.length > IMG_MAX_BYTES) return res.status(413).json({ error: 'Hình quá lớn (tối đa khoảng 700KB). Thầy thu nhỏ hình trong Word rồi nhập lại.' });
+    if (m[1] === 'image/svg+xml' && /<script|\son\w+\s*=|javascript:|<foreignObject/i.test(buf.toString('utf8'))) {
+      return res.status(400).json({ error: 'Hình SVG chứa mã không an toàn.' });
+    }
+    const id = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 32);
+    await store.set(IMG_COL, id, { id, mime: m[1], data: m[2], size: buf.length, createdBy: user.email, createdAt: new Date().toISOString() } as any);
+    return res.json({ id, url: `/api/exam-images/${id}` });
+  }));
+
+  // Hình hiển thị công khai (mã khó đoán); trả về kèm chính sách chặn chạy mã.
+  app.get('/api/exam-images/:id', wrapAsync(async (req, res) => {
+    const id = String(req.params.id || '');
+    if (!/^[a-f0-9]{8,64}$/.test(id)) return res.status(404).end();
+    const doc = (await store.get(IMG_COL, id)) as any;
+    if (!doc?.data) return res.status(404).end();
+    res.setHeader('Content-Type', doc.mime);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    return res.send(Buffer.from(doc.data, 'base64'));
+  }));
 
   // Học sinh: danh sách đề đã phát hành (không kèm đáp án)
   app.get('/api/exams/published', wrapAsync(async (req, res) => {

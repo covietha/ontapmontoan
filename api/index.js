@@ -2,6 +2,7 @@
 
 // server/app.ts
 import express from "express";
+import crypto2 from "crypto";
 
 // server/answerKeys.ts
 var OFFICIAL_QUESTION_KEYS = {
@@ -1144,6 +1145,7 @@ var wrapAsync = (fn) => (req, res, next) => {
 async function createExpressApp() {
   const app = express();
   wrapHandlers(app);
+  app.use("/api/exam-images", express.json({ limit: "1.2mb" }));
   app.use(express.json());
   app.get("/api/health", (req, res) => {
     res.json({
@@ -1329,6 +1331,33 @@ async function createExpressApp() {
     }
     return r.user;
   };
+  const IMG_COL = "examImages";
+  const IMG_MAX_BYTES = 700 * 1024;
+  app.post("/api/exam-images", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const m = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ""));
+    if (!m) return res.status(400).json({ error: "H\xECnh kh\xF4ng \u0111\xFAng \u0111\u1ECBnh d\u1EA1ng (ch\u1EC9 nh\u1EADn PNG, JPEG, GIF, WEBP, SVG)." });
+    const buf = Buffer.from(m[2], "base64");
+    if (buf.length > IMG_MAX_BYTES) return res.status(413).json({ error: "H\xECnh qu\xE1 l\u1EDBn (t\u1ED1i \u0111a kho\u1EA3ng 700KB). Th\u1EA7y thu nh\u1ECF h\xECnh trong Word r\u1ED3i nh\u1EADp l\u1EA1i." });
+    if (m[1] === "image/svg+xml" && /<script|\son\w+\s*=|javascript:|<foreignObject/i.test(buf.toString("utf8"))) {
+      return res.status(400).json({ error: "H\xECnh SVG ch\u1EE9a m\xE3 kh\xF4ng an to\xE0n." });
+    }
+    const id = crypto2.createHash("sha256").update(buf).digest("hex").slice(0, 32);
+    await store.set(IMG_COL, id, { id, mime: m[1], data: m[2], size: buf.length, createdBy: user.email, createdAt: (/* @__PURE__ */ new Date()).toISOString() });
+    return res.json({ id, url: `/api/exam-images/${id}` });
+  }));
+  app.get("/api/exam-images/:id", wrapAsync(async (req, res) => {
+    const id = String(req.params.id || "");
+    if (!/^[a-f0-9]{8,64}$/.test(id)) return res.status(404).end();
+    const doc = await store.get(IMG_COL, id);
+    if (!doc?.data) return res.status(404).end();
+    res.setHeader("Content-Type", doc.mime);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    return res.send(Buffer.from(doc.data, "base64"));
+  }));
   app.get("/api/exams/published", wrapAsync(async (req, res) => {
     const r = await verifyFirebaseToken(req.headers.authorization);
     if (!r.success || !r.user) {

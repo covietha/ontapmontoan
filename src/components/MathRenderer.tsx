@@ -1,11 +1,42 @@
 import React, { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { IMG_MD, resolveImageSrc } from '../utils/imageStore';
 
 interface MathRendererProps {
   content: string;
   className?: string;
   inline?: boolean;
+}
+
+
+/** Chữ thường có thể chứa hình ![w=300](nguồn): hình rộng hiện thành khối riêng, hình nhỏ (công thức dạng ảnh) nằm cùng dòng. */
+function renderWithImages(line: string): React.ReactNode {
+  if (!line.includes('![')) return line;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let k = 0;
+  for (const m of line.matchAll(IMG_MD)) {
+    const src = resolveImageSrc(m[2]);
+    if (!src) continue;
+    if (m.index! > last) out.push(line.slice(last, m.index));
+    const w = Number(/w=(\d+)/.exec(m[1])?.[1]) || 0;
+    const big = w >= 150 || w === 0;
+    out.push(
+      <img
+        key={`img${k++}`}
+        src={src}
+        alt="Hình minh họa"
+        loading="lazy"
+        style={big
+          ? { display: 'block', maxWidth: '100%', width: w ? `${Math.min(w, 520)}px` : undefined, height: 'auto', margin: '8px auto' }
+          : { display: 'inline-block', verticalAlign: 'middle', height: 'auto', width: `${Math.max(w, 12) * 1.25}px`, maxWidth: '100%', margin: '0 2px' }}
+      />
+    );
+    last = m.index! + m[0].length;
+  }
+  if (last < line.length) out.push(line.slice(last));
+  return out.length ? out : line;
 }
 
 export const MathRenderer: React.FC<MathRendererProps> = ({ content, className = '', inline = false }) => {
@@ -67,7 +98,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, className =
           <span key={index}>
             {part.text.split('\n').map((line, lineIdx, arr) => (
               <React.Fragment key={lineIdx}>
-                {line}
+                {renderWithImages(line)}
                 {lineIdx < arr.length - 1 && <br />}
               </React.Fragment>
             ))}

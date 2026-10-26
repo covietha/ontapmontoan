@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { MathRenderer } from './MathRenderer';
 import { parseDocxFile, downloadWordQuestionSampleGuide } from '../utils/fileParsers';
+import { uploadLocalImages } from '../utils/imageStore';
 import type { QuestionDifficulty } from '../types';
 
 type QType = 'mcq' | 'true_false' | 'short_answer' | 'essay';
@@ -215,6 +216,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
         needsReview: q.needsReview,
         reviewReason: q.reviewReason
       }));
+      setPreview(p => ({ ...p, ...Object.fromEntries(added.map(q => [q.key, true])) }));
       setDraft(d => {
         if (!d) return d;
         // Đề lớp 12 chỉ có 3 dạng: tự luận trong file Word bị bỏ qua
@@ -224,18 +226,26 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
           setImportInfo(prev => [...prev, `Đã bỏ qua ${skippedEssay} câu tự luận vì đề lớp 12 chỉ gồm 3 dạng. Đổi khối sang lớp 10 hoặc 11 nếu muốn giữ.`]);
         }
         // Bỏ câu trống mặc định nếu chưa nhập gì
-        const base = d.questions.length === 1 && !d.questions[0].prompt.trim() ? [] : d.questions;
+        const isBlank = d.questions.length === 1 && !d.questions[0].prompt.trim();
+        const base = isBlank ? [] : d.questions;
+        const meta = r.meta || {};
+        const autoTitle = meta.title ? `${meta.grade ? `Toán ${meta.grade} – ` : ''}${meta.title}` : file.name.replace(/\.docx$/i, '');
         return {
           ...d,
           source: 'docx_import',
-          title: d.title || file.name.replace(/\.docx$/i, ''),
+          title: d.title || autoTitle,
+          durationMinutes: isBlank && meta.durationMinutes ? meta.durationMinutes : d.durationMinutes,
+          grade: isBlank && meta.grade ? meta.grade : d.grade,
           questions: sortByPart([...base, ...added])
         };
       });
       const review = added.filter(q => q.needsReview).length;
+      const noKey = added.filter(q => /Chưa có đáp án/.test(q.reviewReason || '')).length;
+      const st = r.stats;
+      const extra = st ? ` Đã nhận ${st.equations} công thức${st.images ? ` và ${st.images} hình` : ''}.` : '';
       setNotice({
         type: 'ok',
-        text: `Đã nhập ${added.length} câu từ "${file.name}".${review ? ` Có ${review} câu cần thầy kiểm tra lại (đánh dấu màu vàng).` : ''}`
+        text: `Đã nhập ${added.length} câu từ "${file.name}".${extra}${noKey ? ` File chưa có đáp án cho ${noKey} câu: thầy chọn đáp án đúng ở các câu đánh dấu vàng trước khi phát hành.` : review ? ` Có ${review} câu cần thầy kiểm tra lại (đánh dấu màu vàng).` : ''}`
       });
     } finally {
       setImporting(false);
@@ -271,10 +281,18 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
     setSaving(true);
     setNotice(null);
     try {
+      // Hình từ file Word được lưu lên máy chủ trước, đề chỉ giữ đường dẫn hình
+      const sorted = sortByPart(draft.questions);
+      const flat = sorted.flatMap(q => [q.prompt, ...q.options, ...q.statements, q.explanation]);
+      const fixed = await uploadLocalImages(flat, await getIdToken());
+      const withUrls = sorted.map((q, i) => {
+        const f = fixed.slice(i * 10, i * 10 + 10);
+        return { ...q, prompt: f[0], options: f.slice(1, 5), statements: f.slice(5, 9), explanation: f[9] };
+      });
       const body = JSON.stringify({
         title: draft.title, code: draft.code, description: draft.description,
         durationMinutes: draft.durationMinutes, grade: draft.grade, source: draft.source, status,
-        questions: sortByPart(draft.questions).map(q => ({
+        questions: withUrls.map(q => ({
           type: q.type, prompt: q.prompt, options: q.type === 'mcq' ? q.options : [],
           correctOptionIndex: q.type === 'mcq' ? q.correctOptionIndex : -1,
           statements: q.type === 'true_false' ? q.statements : undefined,

@@ -3,6 +3,8 @@ import {
   Upload, FileText, CheckCircle2, AlertCircle, Trash2, Edit3, 
   HelpCircle, Download, ArrowLeft, RefreshCw, Eye, Sparkles, Filter
 } from 'lucide-react';
+import { uploadLocalImages } from '../utils/imageStore';
+import { useAuth } from '../context/AuthContext';
 import { parseDocxFile, ParsedWordQuestion, downloadWordQuestionSampleGuide } from '../utils/fileParsers';
 import { useData } from '../context/DataContext';
 import { MathRenderer } from './MathRenderer';
@@ -15,6 +17,7 @@ interface DocxQuestionImporterProps {
 
 export const DocxQuestionImporter: React.FC<DocxQuestionImporterProps> = ({ onClose, onSuccess }) => {
   const { questions: existingQuestions, importWordQuestions } = useData();
+  const { getIdToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
@@ -119,14 +122,17 @@ export const DocxQuestionImporter: React.FC<DocxQuestionImporterProps> = ({ onCl
 
     setLoading(true);
     try {
-      const toImport = parsedQuestions
-        .filter((_, idx) => selectedIndices.has(idx))
+      const picked = parsedQuestions.filter((_, idx) => selectedIndices.has(idx));
+      // Hình trong câu hỏi được lưu lên máy chủ để dùng chung cho mọi máy
+      const token = await getIdToken();
+      const fixed = await Promise.all(picked.map(q => uploadLocalImages([q.prompt, ...q.options, q.explanation], token)));
+      const toImport = picked
         .map((q, i) => ({
           code: `Q-DOCX-${Date.now()}-${i + 1}`,
-          prompt: q.prompt,
-          options: q.options,
-          correctOptionIndex: q.correctOptionIndex,
-          explanation: q.explanation,
+          prompt: fixed[i][0],
+          options: fixed[i].slice(1, 5),
+          correctOptionIndex: Math.max(0, q.correctOptionIndex),
+          explanation: fixed[i][5],
           lessonCode: q.lessonCode || 'BD-01',
           lessonId: 'lesson-01',
           topicId: 'topic-dao-ham',
