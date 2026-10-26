@@ -265,7 +265,8 @@ export function gradeQuestion(q: GradableQuestion, answer: unknown): QuestionOut
 
 /** Tìm đề để chấm: đề mẫu có sẵn trước, sau đó đến đề giáo viên đã phát hành. */
 export async function resolveExamForGrading(examId: string): Promise<GradableExam | null> {
-  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  const migrated = OFFICIAL_EXAMS.some((e) => e.id === examId) ? await getCustomExam(examId) : null;
+  const official = migrated ? undefined : OFFICIAL_EXAMS.find((e) => e.id === examId);
   if (official) {
     return {
       id: official.id,
@@ -304,7 +305,8 @@ export interface ReviewQuestion {
 }
 
 export async function snapshotExamQuestions(examId: string): Promise<ReviewQuestion[]> {
-  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  const migrated = OFFICIAL_EXAMS.some((e) => e.id === examId) ? await getCustomExam(examId) : null;
+  const official = migrated ? undefined : OFFICIAL_EXAMS.find((e) => e.id === examId);
   if (official) {
     return official.questionIds.filter((qId) => OFFICIAL_QUESTION_KEYS[qId]).map((qId) => ({ id: qId, type: 'mcq' as const }));
   }

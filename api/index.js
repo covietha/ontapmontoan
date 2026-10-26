@@ -1058,7 +1058,8 @@ function gradeQuestion(q, answer) {
   };
 }
 async function resolveExamForGrading(examId) {
-  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  const migrated = OFFICIAL_EXAMS.some((e) => e.id === examId) ? await getCustomExam(examId) : null;
+  const official = migrated ? void 0 : OFFICIAL_EXAMS.find((e) => e.id === examId);
   if (official) {
     return {
       id: official.id,
@@ -1089,7 +1090,8 @@ async function resolveExamForGrading(examId) {
   };
 }
 async function snapshotExamQuestions(examId) {
-  const official = OFFICIAL_EXAMS.find((e) => e.id === examId);
+  const migrated = OFFICIAL_EXAMS.some((e) => e.id === examId) ? await getCustomExam(examId) : null;
+  const official = migrated ? void 0 : OFFICIAL_EXAMS.find((e) => e.id === examId);
   if (official) {
     return official.questionIds.filter((qId) => OFFICIAL_QUESTION_KEYS[qId]).map((qId) => ({ id: qId, type: "mcq" }));
   }
@@ -1377,18 +1379,45 @@ async function createExpressApp() {
     if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
     return res.json({ ids: await readHidden() });
   }));
-  app.get("/api/exams/official/:id/keys", wrapAsync(async (req, res) => {
-    if (!await authTeacher(req, res)) return;
+  app.post("/api/exams/official/:id/migrate", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
     const ex = OFFICIAL_EXAMS.find((e) => e.id === req.params.id);
     if (!ex) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1EC1 m\u1EABu." });
-    return res.json({
-      id: ex.id,
-      keys: ex.questionIds.map((qId) => ({
-        questionId: qId,
-        correctOptionIndex: OFFICIAL_QUESTION_KEYS[qId]?.correctOptionIndex ?? -1,
-        explanation: OFFICIAL_QUESTION_KEYS[qId]?.explanation ?? ""
-      }))
+    const existing = await getCustomExam(ex.id);
+    if (existing) return res.json(existing);
+    const given = Array.isArray(req.body?.questions) ? req.body.questions : [];
+    const questions = ex.questionIds.map((qId) => {
+      const g = given.find((x) => x?.id === qId) || {};
+      const k = OFFICIAL_QUESTION_KEYS[qId];
+      return {
+        type: "mcq",
+        prompt: g.prompt,
+        options: g.options,
+        correctOptionIndex: k?.correctOptionIndex ?? -1,
+        explanation: k?.explanation || "",
+        difficulty: g.difficulty,
+        lessonCode: g.lessonCode
+      };
     });
+    const v = validateExamInput({
+      title: ex.title,
+      code: ex.code,
+      description: String(req.body?.description || ""),
+      durationMinutes: ex.durationMinutes,
+      grade: 12,
+      status: "published",
+      source: "manual",
+      questions
+    }, ex.id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const exam = { ...v.value, createdAt: now, updatedAt: now, createdBy: user.email };
+    await saveCustomExam(exam);
+    const set = new Set(await readHidden());
+    set.add(ex.id);
+    await store.set(HIDDEN_COL, HIDDEN_ID, { id: HIDDEN_ID, ids: [...set] });
+    return res.status(201).json(exam);
   }));
   app.put("/api/exams/official/:id/hidden", wrapAsync(async (req, res) => {
     if (!await authTeacher(req, res)) return;

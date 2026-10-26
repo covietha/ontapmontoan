@@ -407,19 +407,36 @@ export async function createExpressApp() {
     return res.json({ ids: await readHidden() });
   }));
 
-  // Giáo viên: đáp án và lời giải của đề mẫu để chép sang đề riêng
-  app.get('/api/exams/official/:id/keys', wrapAsync(async (req, res) => {
-    if (!(await authTeacher(req, res))) return;
+  // Giáo viên: chuyển đề mẫu vào cơ sở dữ liệu (giữ nguyên mã đề) để sửa trực tiếp như mọi đề khác.
+  app.post('/api/exams/official/:id/migrate', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
     const ex = OFFICIAL_EXAMS.find((e) => e.id === req.params.id);
     if (!ex) return res.status(404).json({ error: 'Không tìm thấy đề mẫu.' });
-    return res.json({
-      id: ex.id,
-      keys: ex.questionIds.map((qId) => ({
-        questionId: qId,
-        correctOptionIndex: OFFICIAL_QUESTION_KEYS[qId]?.correctOptionIndex ?? -1,
-        explanation: OFFICIAL_QUESTION_KEYS[qId]?.explanation ?? ''
-      }))
+    const existing = await getCustomExam(ex.id);
+    if (existing) return res.json(existing);
+    const given: any[] = Array.isArray(req.body?.questions) ? req.body.questions : [];
+    const questions = ex.questionIds.map((qId) => {
+      const g = given.find((x) => x?.id === qId) || {};
+      const k = OFFICIAL_QUESTION_KEYS[qId];
+      return {
+        type: 'mcq', prompt: g.prompt, options: g.options,
+        correctOptionIndex: k?.correctOptionIndex ?? -1, explanation: k?.explanation || '',
+        difficulty: g.difficulty, lessonCode: g.lessonCode
+      };
     });
+    const v = validateExamInput({
+      title: ex.title, code: ex.code, description: String(req.body?.description || ''),
+      durationMinutes: ex.durationMinutes, grade: 12, status: 'published', source: 'manual', questions
+    }, ex.id);
+    if (!v.ok) return res.status(400).json({ error: v.error });
+    const now = new Date().toISOString();
+    const exam = { ...v.value, createdAt: now, updatedAt: now, createdBy: user.email };
+    await saveCustomExam(exam);
+    const set = new Set(await readHidden());
+    set.add(ex.id);
+    await store.set(HIDDEN_COL, HIDDEN_ID, { id: HIDDEN_ID, ids: [...set] } as any);
+    return res.status(201).json(exam);
   }));
 
   app.put('/api/exams/official/:id/hidden', wrapAsync(async (req, res) => {
