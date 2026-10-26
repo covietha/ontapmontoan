@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { isExamLocked } from './utils/examLock';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Sidebar } from './components/Sidebar';
@@ -45,6 +46,13 @@ function AppContent() {
   // Layout states
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Đang làm bài thi: ẩn thanh tiêu đề và thanh trạng thái, thu gọn menu để dành chỗ cho đề
+  const [examFocus, setExamFocus] = useState(isExamLocked());
+  useEffect(() => {
+    const h = (e: Event) => setExamFocus(!!(e as CustomEvent).detail);
+    window.addEventListener('exam-lock', h);
+    return () => window.removeEventListener('exam-lock', h);
+  }, []);
 
   // Active Tab state: defaulted by role
   const [activeTab, setActiveTab] = useState<NavTab>(isTeacher ? 'teacher_overview' : 'student_home');
@@ -174,18 +182,18 @@ function AppContent() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(t) => { setActiveTab(t); window.scrollTo({ top: 0 }); }}
-        collapsed={collapsed}
+        collapsed={collapsed || examFocus}
         setCollapsed={setCollapsed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
 
       <div className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-200 ${
-        collapsed ? 'md:ml-[4.5rem]' : 'md:ml-66'
+        collapsed || examFocus ? 'md:ml-[4.5rem]' : 'md:ml-66'
       }`}>
 
         {/* Thanh trạng thái trên cùng: đổi theo menu đang mở */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+        <header className={`sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 ${examFocus ? 'hidden' : ''}`}>
           <div className="tone-rule" />
           <div className="min-h-[3rem] px-4 sm:px-6 py-1.5 flex items-center gap-3">
             <button
@@ -239,7 +247,7 @@ function AppContent() {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4">
+        <main className={examFocus ? 'flex-1 p-2 sm:p-2.5 w-full space-y-0' : 'flex-1 p-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4'}>
           
           {/* ========================================================================= */}
           {/* STUDENT INTERFACE (Strictly 5 sections) */}
@@ -271,7 +279,7 @@ function AppContent() {
               {activeTab === 'student_practice' && (
                 <div className="space-y-3">
                   {/* Switcher between Topic Practice and Exam Room */}
-                  <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-2 max-w-md mx-auto">
+                  <div className={`bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-2 max-w-md mx-auto ${examFocus ? 'hidden' : ''}`}>
                     <button
                       onClick={() => setPracticeSubMode('topics')}
                       className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -419,7 +427,7 @@ function AppContent() {
         <ChatWidget context={`Menu: ${statusTitle}`} />
 
         {/* Thanh trạng thái dưới cùng */}
-        <footer className="sticky bottom-0 z-20 mt-auto border-t border-slate-200 bg-white text-xs text-slate-600" role="contentinfo">
+        <footer className={`sticky bottom-0 z-20 mt-auto border-t border-slate-200 bg-white text-xs text-slate-600 ${examFocus ? 'hidden' : ''}`} role="contentinfo">
           <div className="px-4 sm:px-6 h-9 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--tone)' }} aria-hidden="true" />

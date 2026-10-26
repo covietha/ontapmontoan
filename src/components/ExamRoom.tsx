@@ -435,8 +435,8 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
     const ans = answers[q.id];
 
     return (
-      <div key={q.id} id={`q-${q.id}`} className="space-y-5 scroll-mt-24">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div key={q.id} id={`q-${q.id}`} className={`${isFinished ? 'space-y-5' : 'space-y-3'} scroll-mt-24`}>
+        <div className={`flex items-center justify-between border-b border-slate-100 ${isFinished ? 'pb-3' : 'pb-2'}`}>
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-extrabold px-3 py-1 rounded-lg bg-blue-600 text-white">Câu {idx + 1}</span>
             <span className="text-sm text-slate-500">{PARTS.find(p => p.kind === kind)?.title.split(':')[1]?.trim()}</span>
@@ -461,7 +461,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
         </div>
 
         {kind === 'mcq' && (
-          <div className="space-y-3" style={{ fontSize: fontPx }}>
+          <div className={isFinished ? 'space-y-3' : 'space-y-2'} style={{ fontSize: fontPx }}>
             {q.options.map((optText, optIdx) => {
               const isSelected = ans === optIdx;
               const isCorrect = detail !== undefined && optIdx === detail.correctOptionIndex;
@@ -478,7 +478,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                   key={optIdx}
                   disabled={isFinished}
                   onClick={() => handleSelectOption(q.id, optIdx)}
-                  className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-start gap-4 ${style}`}
+                  className={`w-full text-left ${isFinished ? 'p-4 rounded-2xl gap-4' : 'px-3 py-2 rounded-xl gap-3'} border-2 transition-all flex items-start ${style}`}
                 >
                   <span className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center shrink-0 text-sm ${
                     isFinished && isCorrect ? 'bg-emerald-600 text-white' : isFinished && isSelected ? 'bg-rose-600 text-white' : isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
@@ -492,7 +492,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
         )}
 
         {kind === 'true_false' && (
-          <div className="space-y-3" style={{ fontSize: fontPx }}>
+          <div className={isFinished ? 'space-y-3' : 'space-y-2'} style={{ fontSize: fontPx }}>
             {(q.statements || []).map((st, si) => {
               const given: boolean | null = Array.isArray(ans) ? (typeof ans[si] === 'boolean' ? ans[si] : null) : null;
               const right = detail?.statementCorrect?.[si];
@@ -500,7 +500,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                 ? right ? 'border-emerald-300 bg-emerald-50/50' : 'border-rose-300 bg-rose-50/50'
                 : 'border-slate-200';
               return (
-                <div key={si} className={`rounded-2xl border-2 p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center gap-3 ${rowStyle}`}>
+                <div key={si} className={`rounded-xl border-2 ${isFinished ? 'p-3 sm:p-4' : 'px-3 py-2'} flex flex-wrap sm:flex-nowrap items-center gap-3 ${rowStyle}`}>
                   <div className="flex gap-2 shrink-0" role="group" aria-label={`Ý ${'abcd'[si]}`}>
                     {([true, false] as const).map(v => {
                       const on = given === v;
@@ -512,7 +512,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                           aria-pressed={on}
                           aria-label={`Ý ${'abcd'[si]}: ${v ? 'Đúng' : 'Sai'}`}
                           onClick={() => setTruth(q.id, si, v)}
-                          className={`w-12 h-12 rounded-xl border-2 font-bold transition-all ${
+                          className={`${isFinished ? 'w-12 h-12' : 'w-10 h-10'} rounded-xl border-2 font-bold transition-all ${
                             on
                               ? isFinished ? (right ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'bg-blue-600 border-blue-600 text-white'
                               : correctOne ? 'border-emerald-500 text-emerald-700 bg-white' : 'border-slate-300 text-slate-600 bg-white hover:border-blue-400'
@@ -604,6 +604,164 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
       </div>
     );
   };
+
+  const questionGrid = (
+    <>
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-slate-800">Bảng câu hỏi ({examQuestions.length})</h4>
+            <span className="text-sm text-slate-600 font-semibold">Đã làm: {answeredCount}/{examQuestions.length}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Đã làm</span></div>
+            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300" /><span>Chưa làm</span></div>
+            {!isFinished ? (
+              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Xem lại</span></div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Đúng</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Sai</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Đúng một phần</span></div>
+              </>
+            )}
+          </div>
+
+          {PARTS.map(part => {
+            const items = examQuestions.map((q, idx) => ({ q, idx })).filter(x => kindOf(x.q) === part.kind);
+            if (items.length === 0) return null;
+            return (
+              <div key={part.kind} className="space-y-2">
+                <div className="font-semibold text-slate-800 border-b border-slate-100 pb-1">{part.title}</div>
+                <div className="grid grid-cols-5 gap-2">
+                  {items.map(({ q, idx }) => {
+                    const st = statusOf(q);
+                    const answered = isAnswered(q, answers[q.id]);
+                    let btnStyle = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200';
+                    if (isFinished) {
+                      btnStyle = st === 'correct' ? 'bg-emerald-500 text-white font-bold border-emerald-600'
+                        : st === 'wrong' ? 'bg-rose-500 text-white font-bold border-rose-600'
+                        : st === 'partial' ? 'bg-amber-400 text-slate-900 font-bold border-amber-500'
+                        : st === 'pending' ? 'bg-sky-100 text-sky-800 border-sky-300'
+                        : 'bg-slate-200 text-slate-500 border-slate-300';
+                    } else if (markedForReview[q.id]) btnStyle = 'bg-amber-400 text-slate-900 font-bold border-amber-500';
+                    else if (answered) btnStyle = 'bg-blue-600 text-white font-bold border-blue-700';
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => goTo(idx)}
+                        aria-label={`Câu ${idx + 1}`}
+                        className={`h-10 rounded-xl text-sm font-bold border transition-all flex items-center justify-center ${btnStyle} ${currentQuestionIdx === idx ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+    </>
+  );
+
+  const submitModal = (
+    <>
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" /> Xác nhận nộp bài thi
+            </h3>
+            <div className="text-sm text-slate-600 space-y-2">
+              <p>Bạn đã trả lời <strong>{answeredCount} / {examQuestions.length}</strong> câu hỏi.</p>
+              {answeredCount < examQuestions.length && (
+                <p className="text-rose-600 font-semibold">⚠️ Còn {examQuestions.length - answeredCount} câu chưa trả lời. Bạn có chắc chắn muốn nộp?</p>
+              )}
+              <p>Thời gian còn lại: <strong>{formatTime(timeLeft)}</strong>.</p>
+            </div>
+            <div className="flex gap-3 pt-3">
+              <button onClick={() => setShowSubmitModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50">Tiếp tục làm bài</button>
+              <button onClick={handleFinishExam} className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">Xác nhận nộp bài</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // Đang làm bài: toàn bộ màn hình dành cho đề; mã đề, đồng hồ, nộp bài và bảng câu hỏi gọn ở cột trái.
+  if (!isFinished) {
+    return (
+      <div className="exam-focus flex flex-col lg:flex-row gap-3 lg:h-[calc(100vh-1.25rem)]">
+        <aside className="lg:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 flex flex-col gap-3 lg:overflow-y-auto">
+          <div className="min-w-0">
+            <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{activeExam.code}</span>
+            <h2 className="text-sm font-bold text-slate-900 mt-1 leading-snug line-clamp-3">{activeExam.title}</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl font-mono text-lg font-black border ${
+              timeLeft <= 120 ? 'bg-rose-50 border-rose-300 text-rose-600 animate-pulse' : 'bg-slate-100 border-slate-200 text-slate-800'
+            }`}>
+              <Clock className="w-4 h-4 text-slate-500" />
+              <span>{formatTime(timeLeft)}</span>
+            </div>
+            <button onClick={() => setShowSubmitModal(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 cursor-pointer">
+              <Send className="w-4 h-4" /><span>Nộp bài</span>
+            </button>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-2 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-600">Cỡ chữ</span>
+              <div className="flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
+                <button onClick={() => setFontPx(f => Math.max(14, f - 1))} className="px-2.5 py-0.5 font-bold hover:bg-slate-100" aria-label="Giảm cỡ chữ">A−</button>
+                <span className="px-1.5 font-semibold tabular-nums">{fontPx}px</span>
+                <button onClick={() => setFontPx(f => Math.min(26, f + 1))} className="px-2.5 py-0.5 font-bold hover:bg-slate-100" aria-label="Tăng cỡ chữ">A+</button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-600">Cách xem</span>
+              <div className="flex rounded-lg border border-slate-300 bg-white overflow-hidden" role="group" aria-label="Cách xem">
+                {([['single', 'Từng câu'], ['all', 'Tất cả']] as const).map(([m, label]) => (
+                  <button key={m} onClick={() => setViewMode(m)} aria-pressed={viewMode === m}
+                    className={`px-2.5 py-0.5 font-semibold ${viewMode === m ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-700'}`}>{label}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {questionGrid}
+        </aside>
+
+        <section className="flex-1 min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-6">
+            {viewMode === 'all' ? (
+              ordered.map((q, idx) => (
+                <div key={q.id} className={idx > 0 ? 'pt-6 border-t border-slate-200' : ''}>{renderQuestion(q, idx)}</div>
+              ))
+            ) : currentQ ? renderQuestion(currentQ, currentQuestionIdx) : null}
+          </div>
+          {viewMode !== 'all' && currentQ && (
+            <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 shrink-0">
+              <button
+                disabled={currentQuestionIdx === 0}
+                onClick={() => setCurrentQuestionIdx(prev => prev - 1)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-100 border border-slate-200'}`}
+              >
+                <ArrowLeft className="w-4 h-4" /> Câu trước
+              </button>
+              <button
+                disabled={currentQuestionIdx === examQuestions.length - 1}
+                onClick={() => setCurrentQuestionIdx(prev => prev + 1)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === examQuestions.length - 1 ? 'text-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'}`}
+              >
+                Câu tiếp theo <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </section>
+        {submitModal}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-16">
@@ -715,59 +873,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-slate-800">Bảng câu hỏi ({examQuestions.length})</h4>
-            <span className="text-sm text-slate-600 font-semibold">Đã làm: {answeredCount}/{examQuestions.length}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-600" /><span>Đã làm</span></div>
-            <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-slate-100 border border-slate-300" /><span>Chưa làm</span></div>
-            {!isFinished ? (
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Xem lại</span></div>
-            ) : (
-              <>
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500" /><span>Đúng</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-rose-500" /><span>Sai</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400" /><span>Đúng một phần</span></div>
-              </>
-            )}
-          </div>
-
-          {PARTS.map(part => {
-            const items = examQuestions.map((q, idx) => ({ q, idx })).filter(x => kindOf(x.q) === part.kind);
-            if (items.length === 0) return null;
-            return (
-              <div key={part.kind} className="space-y-2">
-                <div className="font-semibold text-slate-800 border-b border-slate-100 pb-1">{part.title}</div>
-                <div className="grid grid-cols-5 gap-2">
-                  {items.map(({ q, idx }) => {
-                    const st = statusOf(q);
-                    const answered = isAnswered(q, answers[q.id]);
-                    let btnStyle = 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200';
-                    if (isFinished) {
-                      btnStyle = st === 'correct' ? 'bg-emerald-500 text-white font-bold border-emerald-600'
-                        : st === 'wrong' ? 'bg-rose-500 text-white font-bold border-rose-600'
-                        : st === 'partial' ? 'bg-amber-400 text-slate-900 font-bold border-amber-500'
-                        : st === 'pending' ? 'bg-sky-100 text-sky-800 border-sky-300'
-                        : 'bg-slate-200 text-slate-500 border-slate-300';
-                    } else if (markedForReview[q.id]) btnStyle = 'bg-amber-400 text-slate-900 font-bold border-amber-500';
-                    else if (answered) btnStyle = 'bg-blue-600 text-white font-bold border-blue-700';
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => goTo(idx)}
-                        aria-label={`Câu ${idx + 1}`}
-                        className={`h-10 rounded-xl text-sm font-bold border transition-all flex items-center justify-center ${btnStyle} ${currentQuestionIdx === idx ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+          {questionGrid}
 
           {!isFinished && (
             <div className="pt-3 border-t border-slate-100">
@@ -779,26 +885,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
         </div>
       </div>
 
-      {showSubmitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-500" /> Xác nhận nộp bài thi
-            </h3>
-            <div className="text-sm text-slate-600 space-y-2">
-              <p>Bạn đã trả lời <strong>{answeredCount} / {examQuestions.length}</strong> câu hỏi.</p>
-              {answeredCount < examQuestions.length && (
-                <p className="text-rose-600 font-semibold">⚠️ Còn {examQuestions.length - answeredCount} câu chưa trả lời. Bạn có chắc chắn muốn nộp?</p>
-              )}
-              <p>Thời gian còn lại: <strong>{formatTime(timeLeft)}</strong>.</p>
-            </div>
-            <div className="flex gap-3 pt-3">
-              <button onClick={() => setShowSubmitModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50">Tiếp tục làm bài</button>
-              <button onClick={handleFinishExam} className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">Xác nhận nộp bài</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {submitModal}
     </div>
   );
 };

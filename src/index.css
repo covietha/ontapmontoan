@@ -359,3 +359,10 @@ select {
 
 /* Công thức toán lớn hơn một chút so với chữ thường để học sinh dễ đọc */
 .math-content .katex { font-size: 1.12em; }
+
+/* Khi làm bài thi: hình vẽ lớn không chiếm quá 1/3 chiều cao màn hình để cả câu vừa một màn hình */
+.exam-focus .math-content img[style*="display: block"] {
+  max-height: 30vh;
+  width: auto !important;
+  max-width: 100%;
+}
