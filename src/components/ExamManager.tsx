@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { MathRenderer } from './MathRenderer';
 import { QuestionImages } from './QuestionImages';
+import { ExamPreview, type PreviewQuestion } from './ExamPreview';
 import { parseDocxFile, downloadWordQuestionSampleGuide } from '../utils/fileParsers';
 import { uploadLocalImages } from '../utils/imageStore';
 import type { QuestionDifficulty } from '../types';
@@ -119,6 +120,22 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   const [importInfo, setImportInfo] = useState<string[]>([]);
   const [preview, setPreview] = useState<Record<string, boolean>>({});
   const [confirmDelete, setConfirmDelete] = useState<ServerExam | null>(null);
+  const [previewData, setPreviewData] = useState<{ title: string; durationMinutes: number; questions: PreviewQuestion[] } | null>(null);
+
+  const previewDraft = (d: Draft) => setPreviewData({
+    title: d.title, durationMinutes: d.durationMinutes,
+    questions: sortByPart(d.questions).map(q => ({
+      type: q.type, prompt: q.prompt, options: q.options, statements: q.statements, truths: q.truths,
+      correctOptionIndex: q.correctOptionIndex, acceptedText: q.acceptedText, explanation: q.explanation
+    }))
+  });
+  const previewExam = (ex: ServerExam) => setPreviewData({
+    title: ex.title, durationMinutes: ex.durationMinutes,
+    questions: ex.questions.map(q => ({
+      type: q.type || 'mcq', prompt: q.prompt, options: q.options || [], statements: q.statements || [],
+      truths: q.truths || [], correctOptionIndex: q.correctOptionIndex, acceptedText: (q.acceptedAnswers || []).join('; '), explanation: q.explanation
+    }))
+  });
 
   const api = useCallback(async (path: string, init?: RequestInit) => {
     const token = await getIdToken();
@@ -350,10 +367,13 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   );
 
   /* ───────────────────────── Trình soạn đề ───────────────────────── */
+  const previewModal = previewData ? <ExamPreview {...previewData} onClose={() => setPreviewData(null)} /> : null;
+
   if (draft) {
     const reviewCount = draft.questions.filter(q => q.needsReview).length;
     return (
       <div className="space-y-5 max-w-5xl">
+        {previewModal}
         {NoticeBar}
 
         <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
@@ -579,6 +599,10 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
           <span className="text-sm text-slate-600 mr-auto">{draft.questions.length} câu · {draft.durationMinutes} phút</span>
           <button onClick={() => { setDraft(null); setNotice(null); }} disabled={saving}
             className="rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm font-medium px-4 py-2">Hủy</button>
+          <button onClick={() => previewDraft(draft)} disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold px-4 py-2">
+            <Eye className="w-4 h-4" /> Xem trước đề
+          </button>
           <button onClick={() => save('draft')} disabled={saving}
             className="inline-flex items-center gap-2 rounded-lg border border-blue-700 text-blue-800 hover:bg-blue-50 text-sm font-semibold px-4 py-2 disabled:opacity-60">
             <Save className="w-4 h-4" /> Lưu nháp
@@ -595,6 +619,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   /* ───────────────────────── Danh sách đề ───────────────────────── */
   return (
     <div className="space-y-5 max-w-5xl">
+      {previewModal}
       {NoticeBar}
 
       <div className="flex flex-wrap items-center gap-3">
@@ -630,6 +655,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
                 <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{ex.durationMinutes} phút</span>
               </div>
               <div className="flex flex-wrap gap-2 pt-1 mt-auto">
+                <button onClick={() => previewExam(ex)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5"><Eye className="w-3.5 h-3.5" />Xem trước</button>
                 <button onClick={() => openEditor(ex)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5"><Pencil className="w-3.5 h-3.5" />Sửa</button>
                 <button onClick={() => toggleStatus(ex)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5">
                   {ex.status === 'published' ? <><EyeOff className="w-3.5 h-3.5" />Gỡ khỏi phòng thi</> : <><Send className="w-3.5 h-3.5" />Phát hành</>}
