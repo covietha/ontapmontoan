@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { MathRenderer } from './MathRenderer';
+import { QuestionImages } from './QuestionImages';
 import { parseDocxFile, downloadWordQuestionSampleGuide } from '../utils/fileParsers';
 import { uploadLocalImages } from '../utils/imageStore';
 import type { QuestionDifficulty } from '../types';
@@ -479,6 +480,22 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
                             onChange={e => patchQ(q.key, { prompt: e.target.value })} />
                         </label>
                         {preview[q.key] && q.prompt && <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm"><MathRenderer content={q.prompt} /></div>}
+
+                        <QuestionImages
+                          addTo="prompt"
+                          fields={[
+                            { key: 'prompt', label: 'Nội dung câu', value: q.prompt },
+                            ...(q.type === 'mcq' ? q.options.map((o, i) => ({ key: `o${i}`, label: `Phương án ${'ABCD'[i]}`, value: o })) : []),
+                            ...(q.type === 'true_false' ? q.statements.map((o, i) => ({ key: `s${i}`, label: `Ý ${'abcd'[i]})`, value: o })) : []),
+                            { key: 'explanation', label: 'Lời giải', value: q.explanation }
+                          ]}
+                          onChange={(k, v) => {
+                            if (k === 'prompt') patchQ(q.key, { prompt: v });
+                            else if (k === 'explanation') patchQ(q.key, { explanation: v });
+                            else if (k[0] === 'o') patchQ(q.key, { options: q.options.map((x, i) => (i === Number(k[1]) ? v : x)) });
+                            else patchQ(q.key, { statements: q.statements.map((x, i) => (i === Number(k[1]) ? v : x)) });
+                          }}
+                        />
 
                         {q.type === 'mcq' && (
                           <fieldset className="space-y-2">

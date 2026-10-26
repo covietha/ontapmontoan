@@ -4,6 +4,7 @@ import { renderToSvg } from 'wmf-emf-renderer';
 import { parseMtef } from './mtef';
 import { mtefToLatex } from './mtefLatex';
 import { ommlToLatex } from './omml';
+import { shrinkImage as shrink } from './imageStore';
 
 /**
  * Đọc file Word (.docx) thành văn bản có giữ nguyên:
@@ -44,24 +45,6 @@ function utf8ToBase64(str: string): string {
 }
 
 const MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' };
-
-/** Thu nhỏ ảnh lớn để lưu gọn (chỉ chạy trong trình duyệt). */
-async function shrink(dataUrl: string): Promise<string> {
-  if (typeof document === 'undefined' || dataUrl.length < 600_000 || dataUrl.startsWith('data:image/svg')) return dataUrl;
-  try {
-    const img = new Image();
-    img.src = dataUrl;
-    await img.decode();
-    const scale = Math.min(1, 1100 / Math.max(img.width, img.height));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-    const ctx = c.getContext('2d')!;
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(img, 0, 0, c.width, c.height);
-    const out = c.toDataURL('image/jpeg', 0.85);
-    return out.length < dataUrl.length ? out : dataUrl;
-  } catch { return dataUrl; }
-}
 
 function romanOf(n: number, upper: boolean) {
   const t: [number, string][] = [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
