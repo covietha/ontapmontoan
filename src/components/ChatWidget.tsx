@@ -7,6 +7,11 @@ import { isExamLocked } from '../utils/examLock';
 interface Msg { role: 'user' | 'assistant'; content: string }
 interface Status { configured: boolean; enabled: boolean; available: boolean; remaining: number; dailyLimit: number }
 
+const TEACHER_SUGGESTIONS = [
+  'Gợi ý 3 câu vận dụng về cực trị hàm số kèm lời giải',
+  'Lỗi sai thường gặp của học sinh khi giải bài tiệm cận',
+  'Soạn câu đúng/sai về tính đơn điệu có 4 ý a, b, c, d'
+];
 const SUGGESTIONS = [
   'Nhắc em quy tắc đạo hàm của hàm hợp',
   'Cách tìm giá trị lớn nhất, nhỏ nhất trên một đoạn?',
@@ -125,10 +130,12 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
                 {messages.length === 0 && (
                   <div className="space-y-3">
                     <p className="text-sm text-slate-700 bg-white border border-slate-200 rounded-xl p-3 leading-relaxed">
-                      Chào em! Em hỏi bất cứ điều gì về bài Toán đang học. Trợ lý sẽ gợi ý từng bước trước, cần thì giải chi tiết.
+                      {isTeacher
+                        ? 'Chào thầy, cô! Thầy, cô cần hỗ trợ gì về môn Toán: giải bài, soạn câu hỏi, lời giải mẫu hay nhận xét cách dạy?'
+                        : 'Chào em! Em hỏi bất cứ điều gì về bài Toán đang học. Trợ lý sẽ gợi ý từng bước trước, cần thì giải chi tiết.'}
                     </p>
                     <div className="flex flex-col gap-2">
-                      {SUGGESTIONS.map(s => (
+                      {(isTeacher ? TEACHER_SUGGESTIONS : SUGGESTIONS).map(s => (
                         <button key={s} onClick={() => send(s)} className="text-left text-sm px-3 py-2 rounded-xl border border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/40">
                           {s}
                         </button>
@@ -160,7 +167,7 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
               rows={2}
               maxLength={2000}
               disabled={!!status && !status.available}
-              placeholder="Nhập câu hỏi Toán của em…"
+              placeholder={isTeacher ? "Nhập câu hỏi Toán của thầy, cô…" : "Nhập câu hỏi Toán của em…"}
               aria-label="Câu hỏi gửi trợ lý"
               className="flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-[15px] focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
             />

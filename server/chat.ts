@@ -60,10 +60,14 @@ export class ChatUpstreamError extends Error {
   constructor(public status: number, message: string, public reason: string = '') { super(message); }
 }
 
-export async function askGemini(messages: ChatMessage[], context: string): Promise<string> {
+export async function askGemini(messages: ChatMessage[], context: string, audience: 'student' | 'teacher' = 'student'): Promise<string> {
   const key = process.env.GEMINI_API_KEY!;
   const base = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
-  const system = context ? `${SYSTEM}\n\nNgữ cảnh học sinh đang xem: ${context}` : SYSTEM;
+  const who = audience === 'teacher'
+    ? `\n\nNGƯỜI ĐANG HỎI LÀ GIÁO VIÊN (không phải học sinh). Quy tắc này thay thế các quy tắc xưng hô và cách hướng dẫn dành cho học sinh ở trên: chào là "Chào thầy/cô", gọi người hỏi là "thầy/cô", xưng "em" hoặc trung tính. Trả lời thẳng, đầy đủ, không cần gợi ý từng bước trước. Có thể hỗ trợ soạn câu hỏi, đáp án, lời giải mẫu và nhận xét về cách dạy môn Toán.`
+    : `\n\nNGƯỜI ĐANG HỎI LÀ HỌC SINH: chào là "Chào em", gọi người hỏi là "em".`;
+  const sys = SYSTEM + who;
+  const system = context ? `${sys}\n\nNgữ cảnh đang xem: ${context}` : sys;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),

@@ -757,12 +757,18 @@ var ChatUpstreamError = class extends Error {
     this.reason = reason;
   }
 };
-async function askGemini(messages, context) {
+async function askGemini(messages, context, audience = "student") {
   const key = process.env.GEMINI_API_KEY;
   const base = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
-  const system = context ? `${SYSTEM}
+  const who = audience === "teacher" ? `
 
-Ng\u1EEF c\u1EA3nh h\u1ECDc sinh \u0111ang xem: ${context}` : SYSTEM;
+NG\u01AF\u1EDCI \u0110ANG H\u1ECEI L\xC0 GI\xC1O VI\xCAN (kh\xF4ng ph\u1EA3i h\u1ECDc sinh). Quy t\u1EAFc n\xE0y thay th\u1EBF c\xE1c quy t\u1EAFc x\u01B0ng h\xF4 v\xE0 c\xE1ch h\u01B0\u1EDBng d\u1EABn d\xE0nh cho h\u1ECDc sinh \u1EDF tr\xEAn: ch\xE0o l\xE0 "Ch\xE0o th\u1EA7y/c\xF4", g\u1ECDi ng\u01B0\u1EDDi h\u1ECFi l\xE0 "th\u1EA7y/c\xF4", x\u01B0ng "em" ho\u1EB7c trung t\xEDnh. Tr\u1EA3 l\u1EDDi th\u1EB3ng, \u0111\u1EA7y \u0111\u1EE7, kh\xF4ng c\u1EA7n g\u1EE3i \xFD t\u1EEBng b\u01B0\u1EDBc tr\u01B0\u1EDBc. C\xF3 th\u1EC3 h\u1ED7 tr\u1EE3 so\u1EA1n c\xE2u h\u1ECFi, \u0111\xE1p \xE1n, l\u1EDDi gi\u1EA3i m\u1EABu v\xE0 nh\u1EADn x\xE9t v\u1EC1 c\xE1ch d\u1EA1y m\xF4n To\xE1n.` : `
+
+NG\u01AF\u1EDCI \u0110ANG H\u1ECEI L\xC0 H\u1ECCC SINH: ch\xE0o l\xE0 "Ch\xE0o em", g\u1ECDi ng\u01B0\u1EDDi h\u1ECFi l\xE0 "em".`;
+  const sys = SYSTEM + who;
+  const system = context ? `${sys}
+
+Ng\u1EEF c\u1EA3nh \u0111ang xem: ${context}` : sys;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
@@ -1539,10 +1545,11 @@ async function createExpressApp() {
     const messages = cleanMessages(req.body?.messages);
     if (!messages) return res.status(400).json({ error: "C\xE2u h\u1ECFi kh\xF4ng h\u1EE3p l\u1EC7." });
     const left = await usageLeft(r.user.uid);
-    if (left <= 0) return res.status(429).json({ error: `Em \u0111\xE3 d\xF9ng h\u1EBFt ${DAILY_LIMIT} c\xE2u h\u1ECFi h\xF4m nay. Mai em h\u1ECFi ti\u1EBFp nh\xE9.`, remaining: 0 });
+    if (left <= 0) return res.status(429).json({ error: r.user.isRootAdmin || r.user.role === "teacher" ? `Th\u1EA7y/c\xF4 \u0111\xE3 d\xF9ng h\u1EBFt ${DAILY_LIMIT} c\xE2u h\u1ECFi h\xF4m nay. Mai th\u1EA7y/c\xF4 h\u1ECFi ti\u1EBFp nh\xE9.` : `Em \u0111\xE3 d\xF9ng h\u1EBFt ${DAILY_LIMIT} c\xE2u h\u1ECFi h\xF4m nay. Mai em h\u1ECFi ti\u1EBFp nh\xE9.`, remaining: 0 });
     const context = typeof req.body?.context === "string" ? req.body.context.slice(0, 1500) : "";
     try {
-      const reply = await askGemini(messages, context);
+      const audience = r.user.isRootAdmin || r.user.role === "teacher" ? "teacher" : "student";
+      const reply = await askGemini(messages, context, audience);
       let remaining = left - 1;
       try {
         await bumpUsage(r.user.uid);

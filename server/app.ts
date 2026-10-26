@@ -550,10 +550,11 @@ export async function createExpressApp() {
     const messages = cleanMessages(req.body?.messages);
     if (!messages) return res.status(400).json({ error: 'Câu hỏi không hợp lệ.' });
     const left = await usageLeft(r.user.uid);
-    if (left <= 0) return res.status(429).json({ error: `Em đã dùng hết ${DAILY_LIMIT} câu hỏi hôm nay. Mai em hỏi tiếp nhé.`, remaining: 0 });
+    if (left <= 0) return res.status(429).json({ error: (r.user.isRootAdmin || r.user.role === 'teacher') ? `Thầy/cô đã dùng hết ${DAILY_LIMIT} câu hỏi hôm nay. Mai thầy/cô hỏi tiếp nhé.` : `Em đã dùng hết ${DAILY_LIMIT} câu hỏi hôm nay. Mai em hỏi tiếp nhé.`, remaining: 0 });
     const context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 1500) : '';
     try {
-      const reply = await askGemini(messages, context);
+      const audience = r.user.isRootAdmin || r.user.role === 'teacher' ? 'teacher' : 'student';
+      const reply = await askGemini(messages, context, audience);
       // Nếu máy chủ chưa có nơi lưu dữ liệu thì không đếm được lượt, nhưng vẫn trả lời học sinh
       let remaining = left - 1;
       try { await bumpUsage(r.user.uid); } catch (err) { console.error('[chat] Không ghi được số lượt:', err); remaining = left; }
