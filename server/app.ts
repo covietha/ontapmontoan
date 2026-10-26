@@ -9,6 +9,7 @@ import {
   StoredAccountRecord,
   listAccounts,
   findAccount,
+  getAccountById,
   saveAccount,
   isTeacherAccountEmail,
   getSchoolConfig,
@@ -944,7 +945,10 @@ export async function createExpressApp() {
       });
     }
 
-    const passwordToSet = newPassword?.trim() || (await getSchoolConfig()).defaultStudentPassword || 'ThptMath@2026';
+    const passwordToSet = typeof newPassword === 'string' ? newPassword.trim() : '';
+    if (passwordToSet.length < 8 || passwordToSet.length > 100) {
+      return res.status(400).json({ error: 'Mật khẩu mới cần từ 8 đến 100 ký tự.' });
+    }
     const { hash, salt } = hashPassword(passwordToSet);
 
     account.passwordHash = hash;
@@ -953,9 +957,36 @@ export async function createExpressApp() {
 
     return res.json({
       success: true,
-      message: `Đã đặt lại mật khẩu thành công cho tài khoản ${account.username}`,
-      newPassword: passwordToSet
+      message: `Đã lưu mật khẩu mới cho tài khoản ${account.username}`
     });
+  });
+
+  // Người dùng tự đổi mật khẩu của chính mình (phải nhập đúng mật khẩu hiện tại)
+  app.post('/api/account/change-password', async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || 'Yêu cầu xác thực danh tính' });
+    }
+    const account = await getAccountById(authResult.user.uid);
+    if (!account) {
+      return res.status(404).json({ error: 'Tài khoản này đăng nhập bằng Google nên không có mật khẩu nhà trường để đổi.' });
+    }
+    const current = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+    const next = typeof req.body?.newPassword === 'string' ? req.body.newPassword.trim() : '';
+    if (!verifyPassword(current, account.passwordHash, account.salt)) {
+      return res.status(400).json({ error: 'Mật khẩu hiện tại chưa đúng.' });
+    }
+    if (next.length < 8 || next.length > 100) {
+      return res.status(400).json({ error: 'Mật khẩu mới cần từ 8 đến 100 ký tự.' });
+    }
+    if (next === current) {
+      return res.status(400).json({ error: 'Mật khẩu mới phải khác mật khẩu hiện tại.' });
+    }
+    const { hash, salt } = hashPassword(next);
+    account.passwordHash = hash;
+    account.salt = salt;
+    await saveAccount(account);
+    return res.json({ success: true, message: 'Đã lưu mật khẩu mới. Lần đăng nhập sau dùng mật khẩu này.' });
   });
 
   // 6. Config: Toggle permission for teachers to create student accounts (Root Admin only)

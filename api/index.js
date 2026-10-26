@@ -1846,16 +1846,44 @@ async function createExpressApp() {
         error: "Gi\xE1o vi\xEAn ch\u1EC9 \u0111\u01B0\u1EE3c ph\xE9p \u0111\u1EB7t l\u1EA1i m\u1EADt kh\u1EA9u cho t\xE0i kho\u1EA3n h\u1ECDc sinh."
       });
     }
-    const passwordToSet = newPassword?.trim() || (await getSchoolConfig()).defaultStudentPassword || "ThptMath@2026";
+    const passwordToSet = typeof newPassword === "string" ? newPassword.trim() : "";
+    if (passwordToSet.length < 8 || passwordToSet.length > 100) {
+      return res.status(400).json({ error: "M\u1EADt kh\u1EA9u m\u1EDBi c\u1EA7n t\u1EEB 8 \u0111\u1EBFn 100 k\xFD t\u1EF1." });
+    }
     const { hash, salt } = hashPassword(passwordToSet);
     account.passwordHash = hash;
     account.salt = salt;
     await saveAccount(account);
     return res.json({
       success: true,
-      message: `\u0110\xE3 \u0111\u1EB7t l\u1EA1i m\u1EADt kh\u1EA9u th\xE0nh c\xF4ng cho t\xE0i kho\u1EA3n ${account.username}`,
-      newPassword: passwordToSet
+      message: `\u0110\xE3 l\u01B0u m\u1EADt kh\u1EA9u m\u1EDBi cho t\xE0i kho\u1EA3n ${account.username}`
     });
+  });
+  app.post("/api/account/change-password", async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    }
+    const account = await getAccountById(authResult.user.uid);
+    if (!account) {
+      return res.status(404).json({ error: "T\xE0i kho\u1EA3n n\xE0y \u0111\u0103ng nh\u1EADp b\u1EB1ng Google n\xEAn kh\xF4ng c\xF3 m\u1EADt kh\u1EA9u nh\xE0 tr\u01B0\u1EDDng \u0111\u1EC3 \u0111\u1ED5i." });
+    }
+    const current = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+    const next = typeof req.body?.newPassword === "string" ? req.body.newPassword.trim() : "";
+    if (!verifyPassword(current, account.passwordHash, account.salt)) {
+      return res.status(400).json({ error: "M\u1EADt kh\u1EA9u hi\u1EC7n t\u1EA1i ch\u01B0a \u0111\xFAng." });
+    }
+    if (next.length < 8 || next.length > 100) {
+      return res.status(400).json({ error: "M\u1EADt kh\u1EA9u m\u1EDBi c\u1EA7n t\u1EEB 8 \u0111\u1EBFn 100 k\xFD t\u1EF1." });
+    }
+    if (next === current) {
+      return res.status(400).json({ error: "M\u1EADt kh\u1EA9u m\u1EDBi ph\u1EA3i kh\xE1c m\u1EADt kh\u1EA9u hi\u1EC7n t\u1EA1i." });
+    }
+    const { hash, salt } = hashPassword(next);
+    account.passwordHash = hash;
+    account.salt = salt;
+    await saveAccount(account);
+    return res.json({ success: true, message: "\u0110\xE3 l\u01B0u m\u1EADt kh\u1EA9u m\u1EDBi. L\u1EA7n \u0111\u0103ng nh\u1EADp sau d\xF9ng m\u1EADt kh\u1EA9u n\xE0y." });
   });
   app.put("/api/accounts/config", async (req, res) => {
     const authHeader = req.headers.authorization;
