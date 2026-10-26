@@ -7,31 +7,56 @@ interface RosterStudent { code: string; name: string; dob: string }
 interface RosterClass { classroom: string; fileName: string; students: RosterStudent[] }
 interface Created { classroom: string; code: string; name: string; password: string }
 
-/** Đọc một file bảng điểm (.xls/.xlsx): lấy tên lớp ở tiêu đề "Khối 12 - Lớp 12A1" và các dòng có Mã học sinh. */
-function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass {
+const classOk = (c: string) => /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(c);
+
+/**
+ * Đọc file danh sách. Hai dạng:
+ *  1) Danh sách gộp (mẫu của hệ thống): cột Lớp | STT | Mã học sinh | Họ và tên | Ngày sinh, nhiều lớp trong một file.
+ *  2) Bảng điểm từng lớp: tiêu đề "Khối 12 - Lớp 12A1", cột 2 là mã học sinh, cột 3-4 là họ đệm và tên.
+ */
+function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass[] {
   const wb = XLSX.read(buf, { type: 'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-  let classroom = '';
-  for (const r of rows.slice(0, 10)) {
-    const m = /Lớp\s+([0-9]{2}[A-Za-z]{1,3}[0-9]{0,2})/i.exec(String(r[0] ?? ''));
-    if (m) { classroom = m[1].toUpperCase(); break; }
+  const out = new Map<string, RosterClass>();
+  const add = (classroom: string, s: RosterStudent) => {
+    if (!out.has(classroom)) out.set(classroom, { classroom, fileName, students: [] });
+    out.get(classroom)!.students.push(s);
+  };
+  for (const sheetName of wb.SheetNames) {
+    const rows: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
+    const head = rows.findIndex(r => String(r[0]).trim().toLowerCase() === 'lớp' && /mã/i.test(String(r[2] ?? r[1])));
+    if (head >= 0) {
+      const h = rows[head].map(x => String(x).trim().toLowerCase());
+      const ci = h.findIndex(x => x.startsWith('mã'));
+      const ni = h.findIndex(x => x.startsWith('họ'));
+      const di = h.findIndex(x => x.startsWith('ngày'));
+      for (const r of rows.slice(head + 1)) {
+        const cls = String(r[0] ?? '').trim().toUpperCase();
+        const code = String(r[ci] ?? '').trim().replace(/\.0$/, '');
+        const name = String(r[ni] ?? '').replace(/\s+/g, ' ').trim();
+        if (!classOk(cls) || !/^\d{6,12}$/.test(code) || !name) continue;
+        add(cls, { code, name, dob: String(di >= 0 ? r[di] ?? '' : '').trim() });
+      }
+      continue;
+    }
+    let classroom = '';
+    for (const r of rows.slice(0, 10)) {
+      const m = /Lớp\s+([0-9]{2}[A-Za-z]{1,3}[0-9]{0,2})/i.exec(String(r[0] ?? ''));
+      if (m) { classroom = m[1].toUpperCase(); break; }
+    }
+    if (!classroom) {
+      const m = /lop[_\s-]*([0-9]{2}[a-z]{1,3}[0-9]{0,2})/i.exec(fileName);
+      if (m) classroom = m[1].toUpperCase();
+    }
+    if (!classroom) continue;
+    for (const r of rows) {
+      const code = String(r[1] ?? '').trim().replace(/\.0$/, '');
+      if (!/^\d{6,12}$/.test(code)) continue;
+      const name = `${String(r[2] ?? '').trim()} ${String(r[3] ?? '').trim()}`.replace(/\s+/g, ' ').trim();
+      if (name) add(classroom, { code, name, dob: String(r[4] ?? '').trim() });
+    }
   }
-  if (!classroom) {
-    const m = /lop[_\s-]*([0-9]{2}[a-z]{1,3}[0-9]{0,2})/i.exec(fileName);
-    if (m) classroom = m[1].toUpperCase();
-  }
-  if (!classroom) throw new Error(`Không tìm thấy tên lớp trong file "${fileName}".`);
-  const students: RosterStudent[] = [];
-  for (const r of rows) {
-    const code = String(r[1] ?? '').trim().replace(/\.0$/, '');
-    if (!/^\d{6,12}$/.test(code)) continue;
-    const name = `${String(r[2] ?? '').trim()} ${String(r[3] ?? '').trim()}`.replace(/\s+/g, ' ').trim();
-    if (!name) continue;
-    students.push({ code, name, dob: String(r[4] ?? '').trim() });
-  }
-  if (students.length === 0) throw new Error(`File "${fileName}" không có dòng học sinh nào.`);
-  return { classroom, fileName, students };
+  if (out.size === 0) throw new Error(`File "${fileName}" không đúng mẫu hoặc không có dòng học sinh nào.`);
+  return [...out.values()];
 }
 
 interface Props { onDone?: () => void; }
@@ -55,7 +80,7 @@ export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
     const ok: RosterClass[] = [];
     const errs: string[] = [];
     for (const f of files) {
-      try { ok.push(parseSheet(await f.arrayBuffer(), f.name)); } catch (err: any) { errs.push(err.message || String(err)); }
+      try { ok.push(...parseSheet(await f.arrayBuffer(), f.name)); } catch (err: any) { errs.push(err.message || String(err)); }
     }
     // Gộp theo lớp (nếu chọn trùng file), bỏ mã học sinh trùng
     const byClass = new Map<string, RosterClass>();
@@ -123,7 +148,7 @@ export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
       <div>
         <h3 className="font-bold text-slate-900 flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-blue-600" />Nhập danh sách học sinh từ file Excel</h3>
         <p className="text-xs text-slate-600 mt-1">
-          Chọn các file bảng điểm của các lớp (.xls hoặc .xlsx, mỗi lớp một file). Hệ thống lấy tên lớp, mã học sinh và họ tên, tạo tài khoản
+          Chọn file danh sách học sinh (.xls hoặc .xlsx): một file gộp các lớp theo mẫu của hệ thống, hoặc các file bảng điểm từng lớp. Hệ thống lấy tên lớp, mã học sinh và họ tên, tạo tài khoản
           (tên đăng nhập là <strong>mã học sinh</strong>, mật khẩu ngẫu nhiên riêng từng em) và xóa các học sinh cũ không còn trong danh sách.
         </p>
       </div>
