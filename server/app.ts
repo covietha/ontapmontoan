@@ -393,6 +393,46 @@ export async function createExpressApp() {
     return res.json(all.filter((e) => e.status === 'published').map(toPublicExam));
   }));
 
+  /* Đề mẫu của hệ thống (đề bên phải): giáo viên chép thành đề riêng để sửa, đề mẫu gốc có thể được ẩn khỏi học sinh. */
+  const HIDDEN_COL = 'config';
+  const HIDDEN_ID = 'hiddenOfficialExams';
+  const readHidden = async (): Promise<string[]> => {
+    const d = (await store.get(HIDDEN_COL, HIDDEN_ID)) as any;
+    return Array.isArray(d?.ids) ? d.ids.filter((x: any) => typeof x === 'string') : [];
+  };
+
+  app.get('/api/exams/official/hidden', wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || 'Yêu cầu xác thực danh tính' });
+    return res.json({ ids: await readHidden() });
+  }));
+
+  // Giáo viên: đáp án và lời giải của đề mẫu để chép sang đề riêng
+  app.get('/api/exams/official/:id/keys', wrapAsync(async (req, res) => {
+    if (!(await authTeacher(req, res))) return;
+    const ex = OFFICIAL_EXAMS.find((e) => e.id === req.params.id);
+    if (!ex) return res.status(404).json({ error: 'Không tìm thấy đề mẫu.' });
+    return res.json({
+      id: ex.id,
+      keys: ex.questionIds.map((qId) => ({
+        questionId: qId,
+        correctOptionIndex: OFFICIAL_QUESTION_KEYS[qId]?.correctOptionIndex ?? -1,
+        explanation: OFFICIAL_QUESTION_KEYS[qId]?.explanation ?? ''
+      }))
+    });
+  }));
+
+  app.put('/api/exams/official/:id/hidden', wrapAsync(async (req, res) => {
+    if (!(await authTeacher(req, res))) return;
+    const id = String(req.params.id);
+    if (!OFFICIAL_EXAMS.some((e) => e.id === id)) return res.status(404).json({ error: 'Không tìm thấy đề mẫu.' });
+    const set = new Set(await readHidden());
+    if (req.body?.hidden) set.add(id); else set.delete(id);
+    const ids = [...set];
+    await store.set(HIDDEN_COL, HIDDEN_ID, { id: HIDDEN_ID, ids } as any);
+    return res.json({ ids });
+  }));
+
   // Giáo viên: toàn bộ đề (có đáp án)
   app.get('/api/exams/manage', wrapAsync(async (req, res) => {
     if (!(await authTeacher(req, res))) return;

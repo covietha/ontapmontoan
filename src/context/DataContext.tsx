@@ -40,6 +40,8 @@ interface DataContextType {
   exams: Exam[];
   /** Tải lại các đề giáo viên đã phát hành từ máy chủ. */
   refreshExams: () => Promise<void>;
+  allOfficialExams: Exam[];
+  hiddenOfficialIds: string[];
   /** Giáo viên lưu/xóa chuyên đề và bài học trên máy chủ; mọi học sinh thấy ngay sau khi tải lại. */
   saveTopic: (topic: Topic) => Promise<void>;
   saveLesson: (lesson: Lesson) => Promise<void>;
@@ -157,6 +159,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [publishedExams, setPublishedExams] = useState<Exam[]>([]);
+  const [hiddenOfficial, setHiddenOfficial] = useState<string[]>([]);
 
   const [classrooms, setClassrooms] = useState<Classroom[]>(() => {
     const saved = localStorage.getItem('thpt_math_classrooms');
@@ -312,6 +315,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = await getIdToken();
       if (!token) return;
+      try {
+        const h = await fetch('/api/exams/official/hidden', { headers: { Authorization: `Bearer ${token}` } });
+        if (h.ok) { const j = await h.json(); if (Array.isArray(j?.ids)) setHiddenOfficial(j.ids); }
+      } catch { /* giữ danh sách cũ */ }
       const res = await fetch('/api/exams/published', { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return;
       const rows = await res.json();
@@ -816,7 +823,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         topics,
         lessons,
         questions,
-        exams: [...publishedExams, ...exams],
+        exams: [...publishedExams, ...exams.filter(e => !hiddenOfficial.includes(e.id))],
+        allOfficialExams: exams,
+        hiddenOfficialIds: hiddenOfficial,
         refreshExams,
         saveTopic,
         saveLesson,

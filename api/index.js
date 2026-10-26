@@ -1366,6 +1366,41 @@ async function createExpressApp() {
     const all = await listCustomExams();
     return res.json(all.filter((e) => e.status === "published").map(toPublicExam));
   }));
+  const HIDDEN_COL = "config";
+  const HIDDEN_ID = "hiddenOfficialExams";
+  const readHidden = async () => {
+    const d = await store.get(HIDDEN_COL, HIDDEN_ID);
+    return Array.isArray(d?.ids) ? d.ids.filter((x) => typeof x === "string") : [];
+  };
+  app.get("/api/exams/official/hidden", wrapAsync(async (req, res) => {
+    const r = await verifyFirebaseToken(req.headers.authorization);
+    if (!r.success || !r.user) return res.status(r.statusCode || 401).json({ error: r.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    return res.json({ ids: await readHidden() });
+  }));
+  app.get("/api/exams/official/:id/keys", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    const ex = OFFICIAL_EXAMS.find((e) => e.id === req.params.id);
+    if (!ex) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1EC1 m\u1EABu." });
+    return res.json({
+      id: ex.id,
+      keys: ex.questionIds.map((qId) => ({
+        questionId: qId,
+        correctOptionIndex: OFFICIAL_QUESTION_KEYS[qId]?.correctOptionIndex ?? -1,
+        explanation: OFFICIAL_QUESTION_KEYS[qId]?.explanation ?? ""
+      }))
+    });
+  }));
+  app.put("/api/exams/official/:id/hidden", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    const id = String(req.params.id);
+    if (!OFFICIAL_EXAMS.some((e) => e.id === id)) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1EC1 m\u1EABu." });
+    const set = new Set(await readHidden());
+    if (req.body?.hidden) set.add(id);
+    else set.delete(id);
+    const ids = [...set];
+    await store.set(HIDDEN_COL, HIDDEN_ID, { id: HIDDEN_ID, ids });
+    return res.json({ ids });
+  }));
   app.get("/api/exams/manage", wrapAsync(async (req, res) => {
     if (!await authTeacher(req, res)) return;
     return res.json(await listCustomExams());

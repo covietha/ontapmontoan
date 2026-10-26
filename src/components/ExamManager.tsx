@@ -67,6 +67,8 @@ interface ServerExam {
 
 interface Draft {
   id: string | null;
+  /** Nếu chép từ đề mẫu của hệ thống: mã đề mẫu gốc. */
+  fromOfficialId?: string;
   title: string;
   code: string;
   description: string;
@@ -108,7 +110,7 @@ interface Props {
 
 export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
   const { getIdToken } = useAuth();
-  const { refreshExams } = useData();
+  const { refreshExams, allOfficialExams, hiddenOfficialIds, getQuestionById } = useData();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [exams, setExams] = useState<ServerExam[]>([]);
@@ -183,6 +185,44 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
         acceptedText: (q.acceptedAnswers || []).join('; ')
       }))
     });
+  };
+
+  const openOfficial = async (ex: { id: string; title: string; code: string; description: string; durationMinutes: number; questionIds: string[]; grade?: number }) => {
+    try {
+      setNotice(null);
+      const { keys } = await api(`/api/exams/official/${ex.id}/keys`);
+      const byId: Record<string, any> = {};
+      (keys || []).forEach((k: any) => { byId[k.questionId] = k; });
+      const qs: DraftQuestion[] = ex.questionIds.map(id => {
+        const q: any = getQuestionById(id);
+        const k = byId[id];
+        const opts: string[] = q?.options?.length === 4 ? q.options : ['', '', '', ''];
+        return {
+          ...blankQuestion('mcq'),
+          prompt: q?.prompt || '', options: opts,
+          correctOptionIndex: typeof k?.correctOptionIndex === 'number' ? k.correctOptionIndex : -1,
+          explanation: k?.explanation || '', difficulty: q?.difficulty || 'thong_hieu', lessonCode: q?.lessonCode
+        };
+      });
+      setImportInfo([]); setPreview({});
+      setDraft({
+        id: null, fromOfficialId: ex.id, title: ex.title, code: ex.code, description: ex.description || '',
+        durationMinutes: ex.durationMinutes, grade: ex.grade || 12, source: 'manual', questions: qs
+      });
+      setNotice({ type: 'ok', text: 'Đã chép đề mẫu thành bản của thầy. Sửa xong bấm Lưu, đề mẫu gốc sẽ được ẩn khỏi học sinh.' });
+    } catch (e: any) {
+      setNotice({ type: 'err', text: e.message });
+    }
+  };
+
+  const setOfficialHidden = async (id: string, hidden: boolean) => {
+    try {
+      await api(`/api/exams/official/${id}/hidden`, { method: 'PUT', body: JSON.stringify({ hidden }) });
+      await refreshExams();
+      setNotice({ type: 'ok', text: hidden ? 'Đã ẩn đề mẫu khỏi học sinh.' : 'Đã hiện lại đề mẫu cho học sinh.' });
+    } catch (e: any) {
+      setNotice({ type: 'err', text: e.message });
+    }
   };
 
   const patchQ = (key: string, patch: Partial<DraftQuestion>) =>
@@ -320,6 +360,9 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
         }))
       });
       await api(draft.id ? `/api/exams/${draft.id}` : '/api/exams', { method: draft.id ? 'PUT' : 'POST', body });
+      if (draft.fromOfficialId && status === 'published') {
+        await api(`/api/exams/official/${draft.fromOfficialId}/hidden`, { method: 'PUT', body: JSON.stringify({ hidden: true }) });
+      }
       await Promise.all([load(), refreshExams()]);
       setDraft(null);
       setNotice({
@@ -665,6 +708,37 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
             </li>
           ))}
         </ul>
+      )}
+
+      {allOfficialExams.length > 0 && (
+        <section className="space-y-3 pt-2">
+          <h3 className="font-display font-semibold text-slate-900">Đề mẫu của hệ thống</h3>
+          <p className="text-sm text-slate-600">Đề mẫu có sẵn không sửa trực tiếp được. Bấm "Sửa" để chép thành đề của thầy rồi chỉnh sửa; khi phát hành bản sửa, đề mẫu gốc tự ẩn khỏi học sinh.</p>
+          <ul className="grid md:grid-cols-2 gap-4">
+            {allOfficialExams.map(ex => {
+              const hidden = hiddenOfficialIds.includes(ex.id);
+              return (
+                <li key={ex.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">{ex.code}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${hidden ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>{hidden ? 'Đang ẩn với học sinh' : 'Đang hiện với học sinh'}</span>
+                  </div>
+                  <h4 className="font-display font-semibold text-slate-900 leading-snug">{ex.title}</h4>
+                  <div className="flex items-center gap-4 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1"><ListChecks className="w-3.5 h-3.5" />{ex.questionIds.length} câu</span>
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{ex.durationMinutes} phút</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-auto">
+                    <button onClick={() => openOfficial(ex)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5"><Pencil className="w-3.5 h-3.5" />Sửa</button>
+                    <button onClick={() => setOfficialHidden(ex.id, !hidden)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-1.5">
+                      {hidden ? <><Eye className="w-3.5 h-3.5" />Hiện lại</> : <><EyeOff className="w-3.5 h-3.5" />Ẩn khỏi học sinh</>}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {confirmDelete && (
