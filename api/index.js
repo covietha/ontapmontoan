@@ -1946,6 +1946,23 @@ async function createExpressApp() {
       message: `\u0110\xE3 l\u01B0u m\u1EADt kh\u1EA9u m\u1EDBi cho t\xE0i kho\u1EA3n ${account.username}`
     });
   });
+  app.delete("/api/accounts/:id", wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    }
+    if (!authResult.user.isRootAdmin) {
+      return res.status(403).json({ error: "Ch\u1EC9 Qu\u1EA3n tr\u1ECB vi\xEAn g\u1ED1c m\u1EDBi \u0111\u01B0\u1EE3c x\xF3a t\xE0i kho\u1EA3n." });
+    }
+    const account = await findAccount(String(req.params.id));
+    if (!account) return res.status(404).json({ error: "Kh\xF4ng t\xECm th\u1EA5y t\xE0i kho\u1EA3n." });
+    if (account.id === authResult.user.uid || account.email.toLowerCase() === "viethathd@gmail.com") {
+      return res.status(400).json({ error: "Kh\xF4ng th\u1EC3 x\xF3a t\xE0i kho\u1EA3n qu\u1EA3n tr\u1ECB \u0111ang \u0111\u0103ng nh\u1EADp." });
+    }
+    await store.delete("schoolAccounts", account.id);
+    await store.delete("users", account.id).catch(() => void 0);
+    return res.json({ success: true, message: `\u0110\xE3 x\xF3a t\xE0i kho\u1EA3n ${account.username} (${account.displayName}).` });
+  }));
   app.post("/api/account/change-password", async (req, res) => {
     const authResult = await verifyFirebaseToken(req.headers.authorization);
     if (!authResult.success || !authResult.user) {

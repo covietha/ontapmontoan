@@ -1034,6 +1034,25 @@ export async function createExpressApp() {
     });
   });
 
+  // Quản trị viên xóa tài khoản giáo viên hoặc học sinh (không khôi phục được; điểm đã thi vẫn được giữ)
+  app.delete('/api/accounts/:id', wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || 'Yêu cầu xác thực danh tính' });
+    }
+    if (!authResult.user.isRootAdmin) {
+      return res.status(403).json({ error: 'Chỉ Quản trị viên gốc mới được xóa tài khoản.' });
+    }
+    const account = await findAccount(String(req.params.id));
+    if (!account) return res.status(404).json({ error: 'Không tìm thấy tài khoản.' });
+    if (account.id === authResult.user.uid || account.email.toLowerCase() === 'viethathd@gmail.com') {
+      return res.status(400).json({ error: 'Không thể xóa tài khoản quản trị đang đăng nhập.' });
+    }
+    await store.delete('schoolAccounts', account.id);
+    await store.delete('users', account.id).catch(() => undefined);
+    return res.json({ success: true, message: `Đã xóa tài khoản ${account.username} (${account.displayName}).` });
+  }));
+
   // Người dùng tự đổi mật khẩu của chính mình (phải nhập đúng mật khẩu hiện tại)
   app.post('/api/account/change-password', async (req, res) => {
     const authResult = await verifyFirebaseToken(req.headers.authorization);
