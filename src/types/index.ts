@@ -21,6 +21,7 @@ export interface SchoolAccount {
   role: UserRole;
   classroom?: string;
   classroomId?: string;
+  dateOfBirth?: string;
   status: AccountStatus;
   createdAt: string;
   createdBy: string;

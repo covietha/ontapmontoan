@@ -1721,6 +1721,84 @@ async function createExpressApp() {
       totalCount: visibleAccounts.length
     });
   });
+  const CODE_RE = /^\d{6,12}$/;
+  const CLASS_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/;
+  const PW_CHARS = "abcdefghjkmnpqrstuvwxyz23456789";
+  const randomPassword = () => Array.from(crypto2.randomBytes(8)).map((b) => PW_CHARS[b % PW_CHARS.length]).join("");
+  const inChunks = async (items, size, fn) => {
+    for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
+  };
+  app.post("/api/accounts/import-students", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    if (!user.isRootAdmin && !(await getSchoolConfig()).teachersCanCreateStudents) {
+      return res.status(403).json({ error: "Nh\xE0 tr\u01B0\u1EDDng hi\u1EC7n ch\u01B0a b\u1EADt quy\u1EC1n cho gi\xE1o vi\xEAn t\u1EA1o t\xE0i kho\u1EA3n h\u1ECDc sinh." });
+    }
+    if (req.body?.finalize) {
+      const keep = new Set((Array.isArray(req.body.keepCodes) ? req.body.keepCodes : []).map((c) => String(c)));
+      if (keep.size === 0) return res.status(400).json({ error: "Danh s\xE1ch gi\u1EEF l\u1EA1i tr\u1ED1ng, kh\xF4ng x\xF3a h\u1ECDc sinh c\u0169." });
+      const old = (await listAccounts()).filter((a) => a.role === "student" && !keep.has(a.username));
+      await inChunks(old, 25, async (a) => {
+        await store.delete("schoolAccounts", a.id);
+        await store.delete("users", a.id).catch(() => void 0);
+      });
+      return res.json({ removed: old.length });
+    }
+    const classroom = String(req.body?.classroom || "").trim().toUpperCase();
+    if (!CLASS_RE.test(classroom)) return res.status(400).json({ error: "T\xEAn l\u1EDBp kh\xF4ng h\u1EE3p l\u1EC7." });
+    const rows = Array.isArray(req.body?.students) ? req.body.students : [];
+    if (rows.length === 0 || rows.length > 80) return res.status(400).json({ error: "M\u1ED7i l\u1EA7n nh\u1EADp 1 \u0111\u1EBFn 80 h\u1ECDc sinh." });
+    const clean = rows.map((r) => ({
+      code: String(r?.code ?? "").trim(),
+      name: String(r?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 100),
+      dob: String(r?.dob ?? "").trim().slice(0, 20)
+    }));
+    const bad = clean.find((r) => !CODE_RE.test(r.code) || !r.name);
+    if (bad) return res.status(400).json({ error: `D\xF2ng kh\xF4ng h\u1EE3p l\u1EC7 (m\xE3 "${bad.code}", t\xEAn "${bad.name}").` });
+    const created = [];
+    let updated = 0;
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    await inChunks(clean, 15, async (r) => {
+      const id = `sch_acc_${r.code}`;
+      const existing = await store.get("schoolAccounts", id);
+      if (existing && existing.role !== "student") throw new Error(`M\xE3 ${r.code} tr\xF9ng v\u1EDBi t\xE0i kho\u1EA3n gi\xE1o vi\xEAn.`);
+      let rec;
+      if (existing) {
+        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth };
+        updated += 1;
+      } else {
+        const password = randomPassword();
+        const { hash, salt } = hashPassword(password);
+        rec = {
+          id,
+          username: r.code,
+          displayName: r.name,
+          email: `${r.code}@thptmath360.vn`,
+          role: "student",
+          classroom,
+          status: "active",
+          createdAt: now,
+          createdBy: user.email,
+          dateOfBirth: r.dob || void 0,
+          passwordHash: hash,
+          salt
+        };
+        created.push({ code: r.code, name: r.name, password });
+      }
+      await saveAccount(rec);
+      await store.set("users", id, {
+        uid: id,
+        username: rec.username,
+        email: rec.email,
+        displayName: rec.displayName,
+        role: "student",
+        classroom,
+        status: rec.status,
+        createdAt: rec.createdAt
+      }).catch(() => void 0);
+    });
+    return res.json({ classroom, created, updatedCount: updated });
+  }));
   app.post("/api/accounts", async (req, res) => {
     const authHeader = req.headers.authorization;
     const authResult = await verifyFirebaseToken(authHeader);

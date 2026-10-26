@@ -1,3 +1,5 @@
+import { useData } from '../context/DataContext';
+import { StudentRosterImport } from './StudentRosterImport';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
@@ -21,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { SchoolAccount } from '../types';
 
 export const AccountManagement: React.FC = () => {
+  const { refreshRoster } = useData();
   const { isTeacher, isRootAdmin, profile, getIdToken } = useAuth();
 
   const [accounts, setAccounts] = useState<SchoolAccount[]>([]);
@@ -271,6 +274,8 @@ export const AccountManagement: React.FC = () => {
           )}
         </div>
       </div>
+
+      <StudentRosterImport onDone={() => { fetchAccounts(); refreshRoster(); }} />
 
       {actionStatus && (
         <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2">

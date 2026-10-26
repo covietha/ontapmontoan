@@ -10,6 +10,7 @@ import {
   GradeVerificationStatus,
   QuestionApprovalStatus,
   Classroom,
+  GradeLevel,
   StudentProfile,
   QuestionSnapshot
 } from '../types';
@@ -40,6 +41,7 @@ interface DataContextType {
   exams: Exam[];
   /** Tải lại các đề giáo viên đã phát hành từ máy chủ. */
   refreshExams: () => Promise<void>;
+  refreshRoster: () => Promise<void>;
   allOfficialExams: Exam[];
   hiddenOfficialIds: string[];
   /** Giáo viên lưu/xóa chuyên đề và bài học trên máy chủ; mọi học sinh thấy ngay sau khi tải lại. */
@@ -365,6 +367,53 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile?.uid) refreshExams();
     else setPublishedExams([]);
   }, [profile?.uid, refreshExams]);
+
+  // Danh sách học sinh và lớp: lấy từ tài khoản học sinh trên máy chủ (nguồn duy nhất, mọi giáo viên thấy như nhau)
+  const refreshRoster = useCallback(async () => {
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      const res = await fetch('/api/accounts', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const accs: any[] = (data?.accounts || []).filter((a: any) => a.role === 'student');
+      if (accs.length === 0) return;
+      const iso = (d?: string) => {
+        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d || '');
+        return m ? `${m[3]}-${m[2]}-${m[1]}` : d;
+      };
+      const codes = Array.from(new Set(accs.map(a => String(a.classroom || '').toUpperCase()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
+      const now = new Date().toISOString();
+      setClassrooms(prev => codes.map(code => {
+        const old = prev.find(c => c.code === code);
+        if (old) {
+          // Tên lớp theo danh sách nhà trường; xóa giáo viên chủ nhiệm mẫu cũ chưa do thầy cô tự gán
+          const demo = INITIAL_CLASSROOMS.find(c => c.code === code);
+          const isDemoTeacher = !!demo && old.homeroomTeacherId === demo.homeroomTeacherId;
+          return { ...old, name: `Lớp ${code}`, grade: (parseInt(code, 10) as GradeLevel) || old.grade,
+            homeroomTeacherId: isDemoTeacher ? '' : old.homeroomTeacherId, homeroomTeacherName: isDemoTeacher ? '' : old.homeroomTeacherName,
+            subjectTeacherIds: isDemoTeacher ? [] : old.subjectTeacherIds } as Classroom;
+        }
+        return {
+          id: `cls-2025-${code.toLowerCase()}`, code, name: `Lớp ${code}`, academicYear: '2025-2026',
+          grade: (parseInt(code, 10) as GradeLevel) || 12, homeroomTeacherId: '', homeroomTeacherName: '',
+          subjectTeacherIds: [], status: 'active', createdAt: now, updatedAt: now
+        } as Classroom;
+      }));
+      setStudents(accs.map((a): StudentProfile => ({
+        id: `std_${a.username}`, studentCode: a.username, fullName: a.displayName,
+        classroomId: `cls-2025-${String(a.classroom).toLowerCase()}`, classroomCode: String(a.classroom).toUpperCase(),
+        academicYear: '2025-2026', dateOfBirth: iso(a.dateOfBirth), accountId: a.id, hasAccount: true,
+        status: a.status === 'locked' ? 'transferred' : 'active', createdAt: a.createdAt
+      })));
+    } catch {
+      // Không có mạng: giữ danh sách hiện có
+    }
+  }, [getIdToken]);
+
+  useEffect(() => {
+    if (profile?.uid && isTeacher) refreshRoster();
+  }, [profile?.uid, isTeacher, refreshRoster]);
 
   // Lookups
   const getLessonById = (lessonId: string): Lesson | undefined => {
@@ -827,6 +876,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         allOfficialExams: exams,
         hiddenOfficialIds: hiddenOfficial,
         refreshExams,
+        refreshRoster,
         saveTopic,
         saveLesson,
         deleteTopic,

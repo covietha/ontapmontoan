@@ -1,0 +1,194 @@
+import React, { useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+interface RosterStudent { code: string; name: string; dob: string }
+interface RosterClass { classroom: string; fileName: string; students: RosterStudent[] }
+interface Created { classroom: string; code: string; name: string; password: string }
+
+/** Đọc một file bảng điểm (.xls/.xlsx): lấy tên lớp ở tiêu đề "Khối 12 - Lớp 12A1" và các dòng có Mã học sinh. */
+function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass {
+  const wb = XLSX.read(buf, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  let classroom = '';
+  for (const r of rows.slice(0, 10)) {
+    const m = /Lớp\s+([0-9]{2}[A-Za-z]{1,3}[0-9]{0,2})/i.exec(String(r[0] ?? ''));
+    if (m) { classroom = m[1].toUpperCase(); break; }
+  }
+  if (!classroom) {
+    const m = /lop[_\s-]*([0-9]{2}[a-z]{1,3}[0-9]{0,2})/i.exec(fileName);
+    if (m) classroom = m[1].toUpperCase();
+  }
+  if (!classroom) throw new Error(`Không tìm thấy tên lớp trong file "${fileName}".`);
+  const students: RosterStudent[] = [];
+  for (const r of rows) {
+    const code = String(r[1] ?? '').trim().replace(/\.0$/, '');
+    if (!/^\d{6,12}$/.test(code)) continue;
+    const name = `${String(r[2] ?? '').trim()} ${String(r[3] ?? '').trim()}`.replace(/\s+/g, ' ').trim();
+    if (!name) continue;
+    students.push({ code, name, dob: String(r[4] ?? '').trim() });
+  }
+  if (students.length === 0) throw new Error(`File "${fileName}" không có dòng học sinh nào.`);
+  return { classroom, fileName, students };
+}
+
+interface Props { onDone?: () => void; }
+
+export const StudentRosterImport: React.FC<Props> = ({ onDone }) => {
+  const { getIdToken } = useAuth();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [classes, setClasses] = useState<RosterClass[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [created, setCreated] = useState<Created[] | null>(null);
+  const [result, setResult] = useState<{ removed: number; updated: number } | null>(null);
+  const [fatal, setFatal] = useState<string | null>(null);
+
+  const onFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    const ok: RosterClass[] = [];
+    const errs: string[] = [];
+    for (const f of files) {
+      try { ok.push(parseSheet(await f.arrayBuffer(), f.name)); } catch (err: any) { errs.push(err.message || String(err)); }
+    }
+    // Gộp theo lớp (nếu chọn trùng file), bỏ mã học sinh trùng
+    const byClass = new Map<string, RosterClass>();
+    ok.forEach(c => byClass.set(c.classroom, c));
+    const seen = new Set<string>();
+    const list = [...byClass.values()].sort((a, b) => a.classroom.localeCompare(b.classroom, 'vi', { numeric: true }));
+    list.forEach(c => {
+      c.students = c.students.filter(s => { if (seen.has(s.code)) { errs.push(`Mã ${s.code} (${s.name}) bị trùng, chỉ giữ một lần.`); return false; } seen.add(s.code); return true; });
+    });
+    setClasses(list); setErrors(errs); setCreated(null); setResult(null); setFatal(null); setConfirm(false);
+  };
+
+  const total = classes.reduce((n, c) => n + c.students.length, 0);
+
+  const run = async () => {
+    setBusy(true); setFatal(null); setConfirm(false);
+    const all: Created[] = [];
+    let updated = 0;
+    try {
+      const token = await getIdToken();
+      const call = async (body: unknown) => {
+        const res = await fetch('/api/accounts/import-students', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
+        return data;
+      };
+      for (const c of classes) {
+        setProgress(`Đang nhập lớp ${c.classroom} (${c.students.length} học sinh)…`);
+        const data = await call({ classroom: c.classroom, students: c.students });
+        (data.created as { code: string; name: string; password: string }[]).forEach(x => all.push({ classroom: c.classroom, ...x }));
+        updated += data.updatedCount || 0;
+      }
+      setProgress('Đang xóa học sinh cũ không còn trong danh sách…');
+      const fin = await call({ finalize: true, keepCodes: classes.flatMap(c => c.students.map(s => s.code)) });
+      setCreated(all);
+      setResult({ removed: fin.removed || 0, updated });
+      setProgress('');
+      onDone?.();
+    } catch (e: any) {
+      setFatal(`${e.message} — Danh sách có thể mới nhập được một phần. Thầy chọn lại file và nhập lại, học sinh đã có sẽ không bị tạo trùng.`);
+      if (all.length) setCreated(all);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const download = () => {
+    if (!created) return;
+    const wb = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ['Lớp', 'STT', 'Mã đăng nhập (Mã học sinh)', 'Họ và tên', 'Mật khẩu ban đầu'],
+      ...created.map((c, i, arr) => [c.classroom, arr.slice(0, i).filter(x => x.classroom === c.classroom).length + 1, c.code, c.name, c.password])
+    ]);
+    sheet['!cols'] = [{ wch: 8 }, { wch: 6 }, { wch: 26 }, { wch: 30 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, sheet, 'Tài khoản học sinh');
+    XLSX.writeFile(wb, 'tai_khoan_hoc_sinh.xlsx');
+  };
+
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+      <div>
+        <h3 className="font-bold text-slate-900 flex items-center gap-2"><FileSpreadsheet className="w-4 h-4 text-blue-600" />Nhập danh sách học sinh từ file Excel</h3>
+        <p className="text-xs text-slate-600 mt-1">
+          Chọn các file bảng điểm của các lớp (.xls hoặc .xlsx, mỗi lớp một file). Hệ thống lấy tên lớp, mã học sinh và họ tên, tạo tài khoản
+          (tên đăng nhập là <strong>mã học sinh</strong>, mật khẩu ngẫu nhiên riêng từng em) và xóa các học sinh cũ không còn trong danh sách.
+        </p>
+      </div>
+
+      <input ref={fileRef} type="file" accept=".xls,.xlsx" multiple className="hidden" onChange={onFiles} />
+      <button type="button" onClick={() => fileRef.current?.click()} disabled={busy}
+        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium px-3 py-2">
+        <Upload className="w-4 h-4" /> Chọn các file Excel
+      </button>
+
+      {errors.length > 0 && (
+        <ul className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+          {errors.map((e, i) => <li key={i} className="flex gap-1.5"><AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{e}</li>)}
+        </ul>
+      )}
+
+      {classes.length > 0 && !created && (
+        <>
+          <div className="overflow-x-auto">
+            <table className="text-xs border border-slate-200 rounded-lg">
+              <thead className="bg-slate-50 text-slate-600"><tr><th className="px-3 py-1.5 text-left">Lớp</th><th className="px-3 py-1.5 text-right">Số học sinh</th><th className="px-3 py-1.5 text-left">Học sinh đầu danh sách</th></tr></thead>
+              <tbody>
+                {classes.map(c => (
+                  <tr key={c.classroom} className="border-t border-slate-100">
+                    <td className="px-3 py-1.5 font-mono font-bold">{c.classroom}</td>
+                    <td className="px-3 py-1.5 text-right">{c.students.length}</td>
+                    <td className="px-3 py-1.5 text-slate-600">{c.students[0].name} ({c.students[0].code})</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-slate-200 bg-slate-50 font-bold"><td className="px-3 py-1.5">Tổng</td><td className="px-3 py-1.5 text-right">{total}</td><td /></tr>
+              </tbody>
+            </table>
+          </div>
+          {!confirm ? (
+            <button type="button" disabled={busy} onClick={() => setConfirm(true)} className="rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2">
+              Nhập {total} học sinh và thay thế danh sách cũ
+            </button>
+          ) : (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+              <p className="text-sm text-rose-900"><strong>Xác nhận:</strong> toàn bộ tài khoản học sinh cũ không có trong danh sách mới sẽ bị xóa, không khôi phục được. Điểm các em đã thi vẫn được giữ.</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setConfirm(false)} className="rounded-lg border border-slate-300 bg-white text-sm font-medium px-4 py-2">Hủy</button>
+                <button type="button" onClick={run} className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold px-4 py-2">Đồng ý, nhập và thay thế</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {busy && <p role="status" className="text-sm text-blue-800">{progress}</p>}
+      {fatal && <p role="alert" className="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-3">{fatal}</p>}
+
+      {created && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+          {result && (
+            <p className="text-sm text-emerald-900 flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+              Đã tạo {created.length} tài khoản mới{result.updated ? `, cập nhật ${result.updated} tài khoản đã có` : ''}, xóa {result.removed} tài khoản học sinh cũ.
+            </p>
+          )}
+          <p className="text-sm text-emerald-900"><strong>Tải file mật khẩu ngay bây giờ.</strong> Hệ thống chỉ lưu mật khẩu đã mã hóa nên sau này không xem lại được; nếu em nào quên, thầy dùng "Đặt lại MK".</p>
+          <button type="button" onClick={download} className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2"><Download className="w-4 h-4" />Tải file tài khoản (Excel)</button>
+        </div>
+      )}
+    </section>
+  );
+};
+
+export default StudentRosterImport;

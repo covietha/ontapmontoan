@@ -776,6 +776,77 @@ export async function createExpressApp() {
     });
   });
 
+  // Nhập danh sách học sinh theo lớp từ bảng điểm. Gọi từng lớp một (tránh quá thời gian của máy chủ),
+  // sau cùng gọi finalize để xóa các tài khoản học sinh không còn trong danh sách mới.
+  const CODE_RE = /^\d{6,12}$/;
+  const CLASS_RE = /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/;
+  const PW_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // bỏ các ký tự dễ nhầm: i l o 0 1
+  const randomPassword = () => Array.from(crypto.randomBytes(8)).map((b) => PW_CHARS[b % PW_CHARS.length]).join('');
+  const inChunks = async <T,>(items: T[], size: number, fn: (x: T) => Promise<void>) => {
+    for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn));
+  };
+
+  app.post('/api/accounts/import-students', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    if (!user.isRootAdmin && !(await getSchoolConfig()).teachersCanCreateStudents) {
+      return res.status(403).json({ error: 'Nhà trường hiện chưa bật quyền cho giáo viên tạo tài khoản học sinh.' });
+    }
+
+    if (req.body?.finalize) {
+      const keep = new Set((Array.isArray(req.body.keepCodes) ? req.body.keepCodes : []).map((c: any) => String(c)));
+      if (keep.size === 0) return res.status(400).json({ error: 'Danh sách giữ lại trống, không xóa học sinh cũ.' });
+      const old = (await listAccounts()).filter((a) => a.role === 'student' && !keep.has(a.username));
+      await inChunks(old, 25, async (a) => {
+        await store.delete('schoolAccounts', a.id);
+        await store.delete('users', a.id).catch(() => undefined);
+      });
+      return res.json({ removed: old.length });
+    }
+
+    const classroom = String(req.body?.classroom || '').trim().toUpperCase();
+    if (!CLASS_RE.test(classroom)) return res.status(400).json({ error: 'Tên lớp không hợp lệ.' });
+    const rows: any[] = Array.isArray(req.body?.students) ? req.body.students : [];
+    if (rows.length === 0 || rows.length > 80) return res.status(400).json({ error: 'Mỗi lần nhập 1 đến 80 học sinh.' });
+
+    const clean = rows.map((r) => ({
+      code: String(r?.code ?? '').trim(),
+      name: String(r?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 100),
+      dob: String(r?.dob ?? '').trim().slice(0, 20)
+    }));
+    const bad = clean.find((r) => !CODE_RE.test(r.code) || !r.name);
+    if (bad) return res.status(400).json({ error: `Dòng không hợp lệ (mã "${bad.code}", tên "${bad.name}").` });
+
+    const created: { code: string; name: string; password: string }[] = [];
+    let updated = 0;
+    const now = new Date().toISOString();
+    await inChunks(clean, 15, async (r) => {
+      const id = `sch_acc_${r.code}`;
+      const existing = (await store.get('schoolAccounts', id)) as unknown as StoredAccountRecord | null;
+      if (existing && existing.role !== 'student') throw new Error(`Mã ${r.code} trùng với tài khoản giáo viên.`);
+      let rec: StoredAccountRecord;
+      if (existing) {
+        rec = { ...existing, displayName: r.name, classroom, dateOfBirth: r.dob || existing.dateOfBirth };
+        updated += 1;
+      } else {
+        const password = randomPassword();
+        const { hash, salt } = hashPassword(password);
+        rec = {
+          id, username: r.code, displayName: r.name, email: `${r.code}@thptmath360.vn`, role: 'student',
+          classroom, status: 'active', createdAt: now, createdBy: user.email, dateOfBirth: r.dob || undefined,
+          passwordHash: hash, salt
+        };
+        created.push({ code: r.code, name: r.name, password });
+      }
+      await saveAccount(rec);
+      await store.set('users', id, {
+        uid: id, username: rec.username, email: rec.email, displayName: rec.displayName, role: 'student',
+        classroom, status: rec.status, createdAt: rec.createdAt
+      }).catch(() => undefined);
+    });
+    return res.json({ classroom, created, updatedCount: updated });
+  }));
+
   // 3. Create a new school account (Admin: teacher/student; Authorized Teacher: students)
   app.post('/api/accounts', async (req, res) => {
     const authHeader = req.headers.authorization;

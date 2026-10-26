@@ -10,7 +10,7 @@ cp .env.example .env.local   # điền GEMINI_API_KEY nếu dùng tính năng AI
 npm run dev                  # http://localhost:3000 (dữ liệu lưu ở data/store)
 ```
 
-Tài khoản mẫu (mật khẩu `ThptMath@2026`): `GVT1`…`GVT9` (giáo viên Tổ Toán), `HS12001` (học sinh). Đổi mật khẩu trước khi triển khai thật.
+Tài khoản mẫu (mật khẩu `ThptMath@2026`): `GVT1`…`GVT9` (giáo viên Tổ Toán). Đổi mật khẩu trước khi triển khai thật.
 
 ## Giao diện
 
