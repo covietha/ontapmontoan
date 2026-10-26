@@ -123,7 +123,7 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
               <p className="text-sm text-slate-700 bg-white border border-slate-200 rounded-xl p-4 leading-relaxed">
                 {!status.configured
                   ? 'Trợ lý Toán chưa được bật. Thầy cô cần thêm khóa GEMINI_API_KEY trên máy chủ (xem HUONG_DAN_VERCEL.md).'
-                  : 'Trợ lý Toán đang tạm tắt. Em hỏi thầy cô nhé.'}
+                  : (isTeacher ? 'Trợ lý Toán đang tạm tắt. Thầy, cô bật lại ở nút phía trên.' : 'Trợ lý Toán đang tạm tắt. Em hỏi thầy cô nhé.')}
               </p>
             ) : (
               <>
