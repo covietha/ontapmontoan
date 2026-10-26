@@ -14,7 +14,8 @@ const classOk = (c: string) => /^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(c);
 
 /**
  * Đọc file danh sách. Hai dạng:
- *  1) Danh sách gộp (mẫu của hệ thống): cột Lớp | STT | Mã học sinh | Họ và tên | Ngày sinh, nhiều lớp trong một file.
+ *  1) Mẫu nhập học sinh của hệ thống: Mã học sinh (*) | Họ và tên (*) | Lớp (*) | Ngày sinh | Giới tính, nhiều lớp trong một file.
+ *     Nếu ô mã để trống thì tự đặt theo lớp + số thứ tự (12A101…).
  *  2) Bảng điểm từng lớp: tiêu đề "Khối 12 - Lớp 12A1", cột 2 là mã học sinh, cột 3-4 là họ đệm và tên.
  */
 function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass[] {
@@ -26,23 +27,34 @@ function parseSheet(buf: ArrayBuffer, fileName: string): RosterClass[] {
   };
   for (const sheetName of wb.SheetNames) {
     const rows: any[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
-    const head = rows.findIndex(r => String(r[0]).trim().toLowerCase() === 'lớp' && /mã/i.test(String(r[2] ?? r[1])));
+    const norm = (x: unknown) => String(x ?? '').trim().toLowerCase();
+    const head = rows.findIndex(r => {
+      const h = r.map(norm);
+      return h.some(x => x === 'lớp' || x.startsWith('lớp (')) && h.some(x => x.startsWith('họ và tên')) && h.some(x => x.startsWith('mã'));
+    });
     if (head >= 0) {
-      const h = rows[head].map(x => String(x).trim().toLowerCase());
-      const si = h.findIndex(x => x === 'stt');
-      const ci = h.findIndex(x => x.startsWith('mã học sinh') || x.startsWith('mã sổ') || x.startsWith('mã gd'));
-      const ni = h.findIndex(x => x.startsWith('họ'));
+      const h = rows[head].map(norm);
+      const ci = h.findIndex(x => x === 'lớp' || x.startsWith('lớp ('));
+      const ni = h.findIndex(x => x.startsWith('họ và tên'));
       const di = h.findIndex(x => x.startsWith('ngày'));
+      const si = h.findIndex(x => x === 'stt');
+      const nidI = h.findIndex(x => x.startsWith('mã') && x.includes('sở'));
+      let li = h.findIndex(x => x.startsWith('mã đăng nhập'));
+      if (li < 0) li = h.findIndex((x, i) => x.startsWith('mã học sinh') && i !== nidI);
       const perClass = new Map<string, number>();
       for (const r of rows.slice(head + 1)) {
-        const cls = String(r[0] ?? '').trim().toUpperCase();
-        const nid = ci >= 0 ? String(r[ci] ?? '').trim().replace(/\.0$/, '') : '';
+        const cls = String(r[ci] ?? '').trim().toUpperCase();
         const name = String(r[ni] ?? '').replace(/\s+/g, ' ').trim();
         if (!classOk(cls) || !name) continue;
         const n = (perClass.get(cls) || 0) + 1;
         perClass.set(cls, n);
+        const given = li >= 0 ? String(r[li] ?? '').trim().toUpperCase().replace(/\.0$/, '') : '';
         const stt = si >= 0 && Number(r[si]) > 0 ? Number(r[si]) : n;
-        add(cls, { code: loginCode(cls, stt), nationalId: nid, name, dob: String(di >= 0 ? r[di] ?? '' : '').trim() });
+        const code = given || loginCode(cls, stt);
+        add(cls, {
+          code, nationalId: nidI >= 0 ? String(r[nidI] ?? '').trim().replace(/\.0$/, '') : '', name,
+          dob: String(di >= 0 ? r[di] ?? '' : '').trim()
+        });
       }
       continue;
     }
