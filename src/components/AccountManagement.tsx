@@ -396,7 +396,7 @@ export const AccountManagement: React.FC = () => {
               type="text"
               value={newUsername}
               onChange={(e) => setNewUsername(e.target.value)}
-              placeholder="Ví dụ: HS12004"
+              placeholder="Ví dụ: 12A446"
               required
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none font-mono"
             />

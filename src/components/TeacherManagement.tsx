@@ -348,7 +348,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          + Soạn câu hỏi mới
+          Soạn câu hỏi mới
         </button>
 
         <button
