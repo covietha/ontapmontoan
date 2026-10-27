@@ -1,3 +1,4 @@
+import { exportClassAccounts, exportSchoolAccounts, fetchAccounts } from '../utils/exportAccounts';
 import { ClassGroups } from './ClassGroups';
 import React, { useState, useMemo } from 'react';
 import { 
@@ -33,7 +34,7 @@ import {
 } from '../utils/fileParsers';
 
 export const ClassroomManagement: React.FC = () => {
-  const { isTeacher, isRootAdmin, profile } = useAuth();
+  const { isTeacher, isRootAdmin, profile, getIdToken } = useAuth();
   const { 
     classrooms, 
     students, 
@@ -114,6 +115,25 @@ export const ClassroomManagement: React.FC = () => {
       return s.studentCode.toLowerCase().includes(q) || s.fullName.toLowerCase().includes(q);
     });
   }, [classStudents, searchStudentQuery]);
+
+  // Xuất danh sách tài khoản (Excel)
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const doExport = async (classCode?: string) => {
+    setExportMsg(null);
+    try {
+      const all = await fetchAccounts(await getIdToken());
+      if (classCode) {
+        const n = exportClassAccounts(classCode, all);
+        setExportMsg(n ? `Đã xuất ${n} tài khoản của lớp ${classCode}.` : `Lớp ${classCode} chưa có tài khoản nào để xuất.`);
+      } else {
+        const r = exportSchoolAccounts(all);
+        setExportMsg(`Đã xuất toàn trường: ${r.students} học sinh${r.teachers ? `, ${r.teachers} giáo viên` : ''}.`);
+      }
+      setTimeout(() => setExportMsg(null), 8000);
+    } catch (e: any) {
+      setExportMsg('Không xuất được: ' + (e.message || e));
+    }
+  };
 
   // Handle Class Creation/Update
   const handleSaveClassroom = async (e: React.FormEvent) => {
@@ -277,6 +297,16 @@ export const ClassroomManagement: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           {isRootAdmin && (
             <button
+              onClick={() => doExport()}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer"
+              title="Xuất tài khoản học sinh và giáo viên toàn trường ra Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Xuất tài khoản toàn trường</span>
+            </button>
+          )}
+          {isRootAdmin && (
+            <button
               onClick={() => {
                 setEditingClassroom(null);
                 setClassCode('');
@@ -304,6 +334,10 @@ export const ClassroomManagement: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {exportMsg && (
+        <div role="status" className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">{exportMsg}</div>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
@@ -456,6 +490,14 @@ export const ClassroomManagement: React.FC = () => {
                         className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full text-blue-700 bg-blue-50 hover:bg-blue-100"
                       >
                         Sửa lớp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); doExport(c.code); }}
+                        className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                        title="Xuất danh sách tài khoản của lớp ra Excel"
+                      >
+                        Xuất Excel
                       </button>
                     </div>
                   </div>
