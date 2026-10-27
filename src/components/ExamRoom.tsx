@@ -881,25 +881,50 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
           <div className="space-y-2 text-center sm:text-left">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-sm font-semibold">
-                <Award className="w-4 h-4 text-amber-300" /> Kết quả thi thử của bạn
+                <Award className="w-4 h-4 text-amber-300" /> Kết quả thi thử của em
               </div>
               {verificationStatus === 'server_verified' ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40">🔒 Đã xác thực & Chấm điểm máy chủ</span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40">⚠️ Chế độ dự phòng máy khách (Chưa qua máy chủ)</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold bg-amber-500/30 text-amber-200 border border-amber-400/40">Điểm tạm tính trên máy em, chưa qua máy chủ chấm</span>
               )}
             </div>
             <h3 className="text-2xl sm:text-3xl font-black">Điểm đạt được: <span className="text-amber-300">{finalResultScore}</span> / 10</h3>
             <p className="text-sm text-blue-100">
               Số câu làm đúng hoàn toàn: <strong>{serverCorrectCount}</strong> / {gradedTotal || examQuestions.length} câu.
-              {essayCount > 0 && <> Còn {essayCount} câu tự luận chờ giáo viên chấm.</>} Xem lại từng câu bên dưới để chữa đề!
+              {essayCount > 0 && <> Còn {essayCount} câu tự luận chờ giáo viên chấm.</>} Em xem lại các câu chưa đúng ở bên dưới nhé.
             </p>
           </div>
-          <button onClick={() => handleStartExam(activeExam)} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-blue-900 font-bold text-sm shadow-md hover:bg-blue-50">
+          <button onClick={() => handleStartExam(activeExam)} className="inline-flex items-center gap-2 px-5 min-h-12 rounded-2xl bg-white text-blue-900 font-bold text-sm shadow-md hover:bg-blue-50">
             <RotateCcw className="w-4 h-4 text-blue-600" /><span>Làm lại đề này</span>
           </button>
         </div>
       )}
+
+      {isFinished && finalResultScore !== null && (() => {
+        const toReview = examQuestions.map((q, i) => ({ i, st: statusOf(q) })).filter(x => x.st === 'wrong' || x.st === 'partial' || x.st === 'none');
+        return (
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3" aria-labelledby="review-title">
+            <h3 id="review-title" className="font-bold text-slate-900">Bước tiếp theo: xem lại các câu chưa đúng</h3>
+            {toReview.length === 0 ? (
+              <p className="text-sm text-emerald-800 font-semibold">Em làm đúng tất cả các câu chấm tự động. Em có thể làm lại đề hoặc luyện thêm chuyên đề khác.</p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-700">Có {toReview.length} câu cần xem lại. Bấm vào số câu để đọc lời giải, các câu sai cũng được lưu vào Sổ tay lỗi sai để em luyện lại.</p>
+                <div className="flex flex-wrap gap-2">
+                  {toReview.map(x => (
+                    <button key={x.i} type="button" onClick={() => { if (viewMode === 'all') goTo(x.i); else setCurrentQuestionIdx(x.i); }}
+                      className={`min-w-11 h-11 px-3 rounded-lg border font-bold ${x.st === 'wrong' ? 'border-rose-400 bg-rose-50 text-rose-900' : x.st === 'partial' ? 'border-amber-400 bg-amber-50 text-amber-900' : 'border-slate-300 bg-slate-50 text-slate-800'}`}
+                      aria-label={`Câu ${x.i + 1}: ${x.st === 'wrong' ? 'sai' : x.st === 'partial' ? 'đúng một phần' : 'chưa trả lời'}`}>
+                      {x.i + 1}{x.st === 'wrong' ? ' ✗' : x.st === 'partial' ? ' ◐' : ' –'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Nội dung câu hỏi */}

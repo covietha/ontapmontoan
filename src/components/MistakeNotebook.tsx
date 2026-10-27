@@ -117,21 +117,10 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
             <h2 className="text-xl font-bold text-slate-900">Sổ tay lỗi sai & định hướng khắc phục</h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Mỗi câu làm sai là một cơ hội để phát hiện lỗ hổng kiến thức. Hãy mở bài lý thuyết tương ứng và luyện lại đến khi nắm vững.
+            Em làm lần lượt từ trên xuống: xem gợi ý, mở bài lý thuyết nếu cần, rồi bấm “Làm lại câu này”. Làm đúng thì câu sẽ chuyển sang “Đã khắc phục”.
           </p>
         </div>
 
-        {/* Stats badge */}
-        <div className="flex items-center gap-3">
-          <div className="bg-rose-50 border border-rose-200 px-3 py-2 rounded-xl text-center">
-            <div className="text-xs text-rose-600 font-semibold">Chưa sửa</div>
-            <div className="text-lg font-black text-rose-700">{unresolvedCount}</div>
-          </div>
-          <div className="bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl text-center">
-            <div className="text-xs text-emerald-600 font-semibold">Đã khắc phục</div>
-            <div className="text-lg font-black text-emerald-700">{resolvedCount}</div>
-          </div>
-        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -141,7 +130,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
           <div className="inline-flex flex-wrap max-w-full rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
             <button
               onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
+              className={`px-3 min-h-10 rounded-md transition-all ${
                 filterStatus === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
               }`}
             >
@@ -149,7 +138,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
             </button>
             <button
               onClick={() => setFilterStatus('unresolved')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
+              className={`px-3 min-h-10 rounded-md transition-all ${
                 filterStatus === 'unresolved' ? 'bg-rose-500 text-white shadow-xs' : 'text-slate-600'
               }`}
             >
@@ -157,7 +146,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
             </button>
             <button
               onClick={() => setFilterStatus('resolved')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
+              className={`px-3 min-h-10 rounded-md transition-all ${
                 filterStatus === 'resolved' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'
               }`}
             >
@@ -169,7 +158,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
           <select
             value={filterTopic}
             onChange={(e) => setFilterTopic(e.target.value)}
-            className="max-w-full min-w-0 px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 focus:outline-none"
+            aria-label="Lọc theo chuyên đề" className="max-w-full min-w-0 px-3 min-h-10 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 focus:outline-none"
           >
             <option value="all">Tất cả chuyên đề</option>
             {topics.map(t => (
@@ -185,8 +174,8 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo mã câu, nội dung..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            aria-label="Tìm câu hỏi" placeholder="Tìm theo mã câu, nội dung..."
+            className="w-full pl-9 pr-3 min-h-10 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -199,11 +188,11 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
           </div>
           <h3 className="text-base font-bold text-slate-800">
             {mistakeItems.length === 0
-              ? 'Tuyệt vời! Bạn chưa có câu hỏi nào bị làm sai.'
+              ? 'Tuyệt vời! Em chưa có câu nào làm sai.'
               : 'Không có câu hỏi nào khớp với bộ lọc.'}
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Khi bạn làm bài tập hoặc thi thử và chọn chưa đúng đáp án, hệ thống sẽ tự động tổng hợp vào sổ tay này cùng chỉ dẫn ôn tập chi tiết.
+            Khi em làm bài tập hoặc thi thử và chưa đúng, câu đó sẽ tự động vào sổ tay này kèm gợi ý ôn tập. Em có thể đổi bộ lọc hoặc làm thêm bài ở mục Luyện chuyên đề.
           </p>
         </div>
       ) : (
@@ -239,7 +228,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
                       Đã khắc phục
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 animate-pulse">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 ">
                       <AlertCircle className="w-3.5 h-3.5" />
                       Cần ôn lại
                     </span>
@@ -253,7 +242,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
               </div>
 
               {/* Diagnostic Guidance */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 text-amber-900">
                   <span className="font-bold block mb-1">💡 Gợi ý tư duy khi làm sai:</span>
                   <MathRenderer content={item.question.hintOnWrong} />
@@ -268,7 +257,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <button
                   onClick={() => onOpenLesson(item.lessonId)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all"
+                  className="inline-flex items-center gap-1.5 px-3.5 min-h-11 rounded-xl text-sm font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Mở bài lý thuyết: {item.lessonCode}</span>
@@ -276,7 +265,7 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
 
                 <button
                   onClick={() => onPracticeQuestion(item.question.id)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 min-h-11 rounded-xl text-sm font-bold text-white bg-blue-700 hover:bg-blue-800 shadow-md shadow-blue-500/20 transition-all"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Làm lại câu này ngay</span>
@@ -287,6 +276,18 @@ export const MistakeNotebook: React.FC<MistakeNotebookProps> = ({
           ))}
         </div>
       )}
+
+      {/* Thống kê (đặt cuối trang) */}
+        <div className="flex items-center gap-3">
+          <div className="bg-rose-50 border border-rose-200 px-3 py-2 rounded-xl text-center">
+            <div className="text-xs text-rose-600 font-semibold">Chưa sửa</div>
+            <div className="text-lg font-black text-rose-700">{unresolvedCount}</div>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl text-center">
+            <div className="text-xs text-emerald-600 font-semibold">Đã khắc phục</div>
+            <div className="text-lg font-black text-emerald-700">{resolvedCount}</div>
+          </div>
+        </div>
     </div>
   );
 };
