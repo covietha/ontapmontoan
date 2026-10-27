@@ -185,6 +185,8 @@ Lời giải: $y = -(x-2)^2 + 5$ nên giá trị lớn nhất bằng $5$.
 
 PHẦN IV. Tự luận (chỉ dùng cho đề lớp 10, lớp 11; giáo viên chấm)
 
+(Đề lớp 10, 11: PHẦN I và II ghi mức Nhận biết hoặc Thông hiểu; PHẦN III ghi Thông hiểu hoặc Vận dụng; PHẦN IV ghi Vận dụng hoặc Vận dụng cao. Mỗi ý tự luận có thể ghi điểm, ví dụ "a) (0,5 điểm) …".)
+
 Câu 4: [Vận dụng] [Khối 10] Giải phương trình $x^2 - 5x + 6 = 0$.
 Lời giải: $\\Delta = 1$, nên $x = 2$ hoặc $x = 3$.`;
 

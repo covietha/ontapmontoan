@@ -26,6 +26,16 @@ export interface ParsedExamMeta {
   examCode?: string;
 }
 
+/** Mức độ cho phép theo dạng câu ở đề lớp 10 và 11 (lớp 12 không ràng buộc). */
+export const ALLOWED_LEVELS_10_11: Record<ParsedQType, QuestionDifficulty[]> = {
+  mcq: ['nhan_biet', 'thong_hieu'],
+  true_false: ['nhan_biet', 'thong_hieu'],
+  short_answer: ['thong_hieu', 'van_dung'],
+  essay: ['van_dung', 'van_dung_cao']
+};
+const LEVEL_LABEL: Record<string, string> = { nhan_biet: 'Nhận biết', thong_hieu: 'Thông hiểu', van_dung: 'Vận dụng', van_dung_cao: 'Vận dụng cao' };
+const TYPE_LABEL: Record<ParsedQType, string> = { mcq: 'Trắc nghiệm 4 phương án', true_false: 'Đúng/Sai', short_answer: 'Trả lời ngắn', essay: 'Tự luận' };
+
 const PART_RE = /^\s*PH[ẦA]N\s*(IV|III|II|I|[1-4])\b/i;
 const Q_START = /^\s*(?:Câu|Bài)\s*(\d+)\s*[.:)\]]?\s*/i;
 
@@ -285,5 +295,17 @@ export function parseQuestionText(text: string): { questions: ParsedWordQuestion
     const blockLines = lines.slice(s.line, end).filter((_, k) => !partLines.has(s.line + k));
     questions.push(parseBlock(blockLines, s.num, s.section));
   });
-  return { questions, errors: [], meta };
+  // Đề lớp 10/11: gán khối của đề cho các câu không ghi khối; mức độ mặc định theo dạng; cảnh báo mức độ lệch cấu trúc
+  const errors: string[] = [];
+  const g = meta.grade;
+  if (g === 10 || g === 11) {
+    const explicit = new Set(starts.map((_, i) => i).filter(i => /\[(?:Nhận biết|Thông hiểu|Vận dụng)/i.test(lines.slice(starts[i].line, starts[i].line + 1).join(' '))));
+    questions.forEach((q, i) => {
+      q.grade = g;
+      const allowed = ALLOWED_LEVELS_10_11[q.type];
+      if (!explicit.has(i)) q.difficulty = allowed[0] === 'nhan_biet' ? 'thong_hieu' : allowed[0];
+      else if (!allowed.includes(q.difficulty)) errors.push(`Câu ${q.questionNumber} (${TYPE_LABEL[q.type]}): mức "${LEVEL_LABEL[q.difficulty]}" ngoài cấu trúc đề lớp ${g} (${allowed.map(l => LEVEL_LABEL[l]).join(' hoặc ')}). Thầy kiểm tra lại mức độ.`);
+    });
+  }
+  return { questions, errors, meta };
 }

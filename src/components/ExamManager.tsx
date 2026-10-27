@@ -484,6 +484,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
                 );
               })}
               {std && <span className="text-xs text-slate-500 ml-auto">Cấu trúc đề tốt nghiệp: 12 câu + 4 câu + 6 câu = 10 điểm</span>}
+              {!std && <span className="text-xs text-slate-600 basis-full">Đề lớp {draft.grade} gồm 4 dạng: trắc nghiệm 4 phương án và đúng/sai (nhận biết hoặc thông hiểu), trả lời ngắn (thông hiểu hoặc vận dụng), tự luận (vận dụng hoặc vận dụng cao).</span>}
             </div>
           );
         })()}
