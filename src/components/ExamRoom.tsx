@@ -77,6 +77,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   // Countdown timer in seconds
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isFinished, setIsFinished] = useState<boolean>(false);
+  const [panelOpen, setPanelOpen] = useState(false); // bảng câu hỏi trên điện thoại
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
   const [finalResultScore, setFinalResultScore] = useState<number | null>(null);
   const [serverCorrectCount, setServerCorrectCount] = useState<number>(0);
@@ -644,7 +645,6 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   };
 
   const unansweredIdx = examQuestions.map((q, i) => ({ q, i })).filter(x => !isAnswered(x.q, answers[x.q.id])).map(x => x.i);
-  const [panelOpen, setPanelOpen] = useState(false);
 
   /** Tiến độ: "Câu 5/22", số câu đã làm và trạng thái của câu đang xem. */
   const progressBar = (
