@@ -474,9 +474,17 @@ function ensureSeeded() {
   }
   return seeding;
 }
+var LIST_TTL_MS = 6e4;
+var listCache = null;
+function invalidateAccountsCache() {
+  listCache = null;
+}
 async function listAccounts() {
+  if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.rows.map((a) => ({ ...a }));
   await ensureSeeded();
-  return await store.list(ACCOUNTS);
+  const rows = await store.list(ACCOUNTS);
+  listCache = { at: Date.now(), rows };
+  return rows.map((a) => ({ ...a }));
 }
 async function getAccountById(id) {
   await ensureSeeded();
@@ -495,6 +503,7 @@ async function findAccount(input) {
 async function saveAccount(account) {
   await ensureSeeded();
   await store.set(ACCOUNTS, account.id, account);
+  invalidateAccountsCache();
 }
 async function isTeacherAccountEmail(email) {
   await ensureSeeded();
@@ -986,18 +995,24 @@ function validateExamInput(body, examId) {
     }
   };
 }
+var examCache = null;
 async function listCustomExams() {
-  const rows = await store.list(COL2);
-  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!examCache || Date.now() - examCache.at > 3e4) {
+    const rows = await store.list(COL2);
+    examCache = { at: Date.now(), rows: rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
+  }
+  return examCache.rows.map((e) => ({ ...e }));
 }
 async function getCustomExam(id) {
   return await store.get(COL2, id);
 }
 async function saveCustomExam(exam) {
   await store.set(COL2, exam.id, exam);
+  examCache = null;
 }
 async function deleteCustomExam(id) {
   await store.delete(COL2, id);
+  examCache = null;
 }
 function toPublicExam(exam) {
   return {
@@ -1817,6 +1832,7 @@ async function createExpressApp() {
       const old = (await listAccounts()).filter((a) => a.role === "student" && !keep.has(a.username));
       await inChunks(old, 25, async (a) => {
         await store.delete("schoolAccounts", a.id);
+        invalidateAccountsCache();
         await store.delete("users", a.id).catch(() => void 0);
       });
       return res.json({ removed: old.length });
@@ -2037,6 +2053,7 @@ async function createExpressApp() {
       return res.status(400).json({ error: "Kh\xF4ng th\u1EC3 x\xF3a t\xE0i kho\u1EA3n qu\u1EA3n tr\u1ECB \u0111ang \u0111\u0103ng nh\u1EADp." });
     }
     await store.delete("schoolAccounts", account.id);
+    invalidateAccountsCache();
     await store.delete("users", account.id).catch(() => void 0);
     return res.json({ success: true, message: `\u0110\xE3 x\xF3a t\xE0i kho\u1EA3n ${account.username} (${account.displayName}).` });
   }));

@@ -221,9 +221,17 @@ function ensureSeeded(): Promise<void> {
   return seeding;
 }
 
+// Danh sách tài khoản (hơn 450 bản ghi) được nhiều API đọc lại liên tục: nhớ tạm 60 giây để không tiêu hết hạn mức đọc của Firestore.
+const LIST_TTL_MS = 60_000;
+let listCache: { at: number; rows: StoredAccountRecord[] } | null = null;
+export function invalidateAccountsCache(): void { listCache = null; }
+
 export async function listAccounts(): Promise<StoredAccountRecord[]> {
+  if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.rows.map((a) => ({ ...a }));
   await ensureSeeded();
-  return (await store.list(ACCOUNTS)) as StoredAccountRecord[];
+  const rows = (await store.list(ACCOUNTS)) as StoredAccountRecord[];
+  listCache = { at: Date.now(), rows };
+  return rows.map((a) => ({ ...a }));
 }
 
 export async function getAccountById(id: string): Promise<StoredAccountRecord | null> {
@@ -246,6 +254,7 @@ export async function findAccount(input: string): Promise<StoredAccountRecord | 
 export async function saveAccount(account: StoredAccountRecord): Promise<void> {
   await ensureSeeded();
   await store.set(ACCOUNTS, account.id, account as unknown as Doc);
+  invalidateAccountsCache();
 }
 
 export async function isTeacherAccountEmail(email: string): Promise<boolean> {

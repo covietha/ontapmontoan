@@ -13,7 +13,8 @@ import {
   saveAccount,
   isTeacherAccountEmail,
   getSchoolConfig,
-  saveSchoolConfig
+  saveSchoolConfig,
+  invalidateAccountsCache
 } from './accounts';
 import { store, StorageNotConfiguredError } from './store';
 import { chatConfigured, isChatEnabled, setChatEnabled, usageLeft, bumpUsage, cleanMessages, askGemini, ChatUpstreamError, DAILY_LIMIT } from './chat';
@@ -887,7 +888,7 @@ export async function createExpressApp() {
       if (keep.size === 0) return res.status(400).json({ error: 'Danh sách giữ lại trống, không xóa học sinh cũ.' });
       const old = (await listAccounts()).filter((a) => a.role === 'student' && !keep.has(a.username));
       await inChunks(old, 25, async (a) => {
-        await store.delete('schoolAccounts', a.id);
+        await store.delete('schoolAccounts', a.id); invalidateAccountsCache();
         await store.delete('users', a.id).catch(() => undefined);
       });
       return res.json({ removed: old.length });
@@ -1137,7 +1138,7 @@ export async function createExpressApp() {
     if (account.id === authResult.user.uid || account.email.toLowerCase() === 'viethathd@gmail.com') {
       return res.status(400).json({ error: 'Không thể xóa tài khoản quản trị đang đăng nhập.' });
     }
-    await store.delete('schoolAccounts', account.id);
+    await store.delete('schoolAccounts', account.id); invalidateAccountsCache();
     await store.delete('users', account.id).catch(() => undefined);
     return res.json({ success: true, message: `Đã xóa tài khoản ${account.username} (${account.displayName}).` });
   }));

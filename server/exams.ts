@@ -133,9 +133,14 @@ export function validateExamInput(body: any, examId: string): { ok: true; value:
   };
 }
 
+// Nhớ tạm danh sách đề 30 giây (mọi học sinh đều đọc) để tiết kiệm hạn mức đọc của Firestore; xóa ngay khi có ghi.
+let examCache: { at: number; rows: CustomExam[] } | null = null;
 export async function listCustomExams(): Promise<CustomExam[]> {
-  const rows = (await store.list(COL)) as CustomExam[];
-  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (!examCache || Date.now() - examCache.at > 30_000) {
+    const rows = (await store.list(COL)) as CustomExam[];
+    examCache = { at: Date.now(), rows: rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
+  }
+  return examCache.rows.map((e) => ({ ...e }));
 }
 
 export async function getCustomExam(id: string): Promise<CustomExam | null> {
@@ -144,10 +149,12 @@ export async function getCustomExam(id: string): Promise<CustomExam | null> {
 
 export async function saveCustomExam(exam: CustomExam): Promise<void> {
   await store.set(COL, exam.id, exam as unknown as Doc);
+  examCache = null;
 }
 
 export async function deleteCustomExam(id: string): Promise<void> {
   await store.delete(COL, id);
+  examCache = null;
 }
 
 /** Bản gửi cho học sinh: không có đáp án và lời giải. */
