@@ -1498,7 +1498,7 @@ async function createExpressApp() {
     const name = String(body?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
     if (!name) return { error: "Vui l\xF2ng nh\u1EADp t\xEAn l\u1EDBp." };
     const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
-    const academicYear = String(body?.academicYear ?? "").trim().slice(0, 20) || "2025-2026";
+    const academicYear = String(body?.academicYear ?? "").trim().slice(0, 20) || "2026-2027";
     const description = String(body?.description ?? "").trim().slice(0, 300);
     const wanted = Array.isArray(body?.studentIds) ? body.studentIds.map((x) => String(x)) : [];
     if (wanted.length > 600) return { error: "M\u1ED7i l\u1EDBp t\u1ED1i \u0111a 600 h\u1ECDc sinh." };

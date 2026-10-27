@@ -496,7 +496,7 @@ export async function createExpressApp() {
     const name = String(body?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
     if (!name) return { error: 'Vui lòng nhập tên lớp.' } as const;
     const grade = [10, 11, 12].includes(Number(body?.grade)) ? Number(body.grade) : 12;
-    const academicYear = String(body?.academicYear ?? '').trim().slice(0, 20) || '2025-2026';
+    const academicYear = String(body?.academicYear ?? '').trim().slice(0, 20) || '2026-2027';
     const description = String(body?.description ?? '').trim().slice(0, 300);
     const wanted: string[] = Array.isArray(body?.studentIds) ? body.studentIds.map((x: any) => String(x)) : [];
     if (wanted.length > 600) return { error: 'Mỗi lớp tối đa 600 học sinh.' } as const;

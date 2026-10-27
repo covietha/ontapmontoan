@@ -420,12 +420,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Tên lớp theo danh sách nhà trường; xóa giáo viên chủ nhiệm mẫu cũ chưa do thầy cô tự gán
           const demo = INITIAL_CLASSROOMS.find(c => c.code === code);
           const isDemoTeacher = !!demo && old.homeroomTeacherId === demo.homeroomTeacherId;
-          return { ...old, name: `Lớp ${code}`, grade: (parseInt(code, 10) as GradeLevel) || old.grade,
+          return { ...old, name: `Lớp ${code}`, academicYear: '2026-2027', grade: (parseInt(code, 10) as GradeLevel) || old.grade,
             homeroomTeacherId: isDemoTeacher ? '' : old.homeroomTeacherId, homeroomTeacherName: isDemoTeacher ? '' : old.homeroomTeacherName,
             subjectTeacherIds: isDemoTeacher ? [] : old.subjectTeacherIds } as Classroom;
         }
         return {
-          id: `cls-2025-${code.toLowerCase()}`, code, name: `Lớp ${code}`, academicYear: '2025-2026',
+          id: `cls-2025-${code.toLowerCase()}`, code, name: `Lớp ${code}`, academicYear: '2026-2027',
           grade: (parseInt(code, 10) as GradeLevel) || 12, homeroomTeacherId: '', homeroomTeacherName: '',
           subjectTeacherIds: [], status: 'active', createdAt: now, updatedAt: now
         } as Classroom;
@@ -433,7 +433,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStudents(accs.map((a): StudentProfile => ({
         id: `std_${a.username}`, studentCode: a.username, fullName: a.displayName,
         classroomId: `cls-2025-${String(a.classroom).toLowerCase()}`, classroomCode: String(a.classroom).toUpperCase(),
-        academicYear: '2025-2026', dateOfBirth: iso(a.dateOfBirth), accountId: a.id, hasAccount: true,
+        academicYear: '2026-2027', dateOfBirth: iso(a.dateOfBirth), accountId: a.id, hasAccount: true,
         status: a.status === 'locked' ? 'transferred' : 'active', createdAt: a.createdAt
       })));
     } catch {

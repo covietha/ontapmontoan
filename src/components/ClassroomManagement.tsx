@@ -52,7 +52,7 @@ export const ClassroomManagement: React.FC = () => {
 
   // Selected Classroom for viewing students or batch actions
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>(classrooms[0]?.id || '');
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('2025-2026');
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('2026-2027');
   const [selectedGrade, setSelectedGrade] = useState<'all' | GradeLevel>('all');
   const [searchStudentQuery, setSearchStudentQuery] = useState('');
 
@@ -61,7 +61,7 @@ export const ClassroomManagement: React.FC = () => {
   const [editingClassroom, setEditingClassroom] = useState<Classroom | null>(null);
   const [classCode, setClassCode] = useState('');
   const [className, setClassName] = useState('');
-  const [classYear, setClassYear] = useState('2025-2026');
+  const [classYear, setClassYear] = useState('2026-2027');
   const [classGrade, setClassGrade] = useState<GradeLevel>(12);
   const [homeroomTeacherName, setHomeroomTeacherName] = useState('Nguyễn Văn Đăng');
   const [classModalError, setClassModalError] = useState<string | null>(null);
@@ -225,7 +225,7 @@ export const ClassroomManagement: React.FC = () => {
         fullName: row.fullName,
         classroomId: matchedClass ? matchedClass.id : selectedClassroom?.id || 'cls-default',
         classroomCode: matchedClass ? matchedClass.code : row.classroomCode,
-        academicYear: matchedClass ? matchedClass.academicYear : '2025-2026',
+        academicYear: matchedClass ? matchedClass.academicYear : '2026-2027',
         dateOfBirth: row.dateOfBirth,
         gender: (row.gender === 'Nữ' ? 'Nữ' : 'Nam') as 'Nam' | 'Nữ',
         hasAccount: false,
@@ -281,7 +281,7 @@ export const ClassroomManagement: React.FC = () => {
                 setEditingClassroom(null);
                 setClassCode('');
                 setClassName('');
-                setClassYear('2025-2026');
+                setClassYear('2026-2027');
                 setClassGrade(12);
                 setShowClassModal(true);
               }}
@@ -899,7 +899,7 @@ export const ClassroomManagement: React.FC = () => {
                   type="text"
                   value={classYear}
                   onChange={(e) => setClassYear(e.target.value)}
-                  placeholder="2025-2026"
+                  placeholder="2026-2027"
                   required
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono"
                 />

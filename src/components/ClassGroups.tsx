@@ -9,7 +9,7 @@ interface Group {
 }
 interface Form { id: string | null; name: string; grade: number; academicYear: string; description: string; ids: string[] }
 
-const blank = (): Form => ({ id: null, name: '', grade: 12, academicYear: '2025-2026', description: '', ids: [] });
+const blank = (): Form => ({ id: null, name: '', grade: 12, academicYear: '2026-2027', description: '', ids: [] });
 
 /** Lớp do giáo viên tự tạo: chọn học sinh từ danh sách các lớp đã cập nhật rồi đưa vào lớp mới. */
 export const ClassGroups: React.FC = () => {
