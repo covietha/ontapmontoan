@@ -461,7 +461,7 @@ export const ClassroomManagement: React.FC = () => {
                   </div>
 
                   <div className="text-xs text-slate-500 space-y-1">
-                    <div>GVCN: <strong className="text-slate-800">{c.homeroomTeacherName}</strong></div>
+                    <div>GVPT: <strong className="text-slate-800">{c.homeroomTeacherName}</strong></div>
                     <div>Năm học: <span className="font-mono">{c.academicYear}</span></div>
                   </div>
 
@@ -698,7 +698,7 @@ export const ClassroomManagement: React.FC = () => {
               Cấp tài khoản hàng loạt cho lớp {selectedClassroom.code}
             </h3>
             <p className="text-xs text-indigo-800 leading-relaxed">
-              Hệ thống sẽ tự động tạo tài khoản theo Mã học sinh cho các em được chọn, băm mật khẩu bảo mật PBKDF2-SHA512 và hỗ trợ xuất danh sách bàn giao ra Excel cho giáo viên chủ nhiệm.
+              Hệ thống sẽ tự động tạo tài khoản theo Mã học sinh cho các em được chọn, băm mật khẩu bảo mật PBKDF2-SHA512 và hỗ trợ xuất danh sách bàn giao ra Excel cho giáo viên phụ trách.
             </p>
           </div>
 
@@ -906,7 +906,7 @@ export const ClassroomManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">GV Chủ nhiệm</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">GV Phụ trách</label>
                 <input
                   type="text"
                   value={homeroomTeacherName}
