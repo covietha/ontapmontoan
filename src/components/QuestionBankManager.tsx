@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import { 
   FileText, Plus, Search, Filter, CheckCircle2, XCircle, Trash2, 
   RotateCcw, AlertTriangle, Eye, Edit3, Upload, HelpCircle, ShieldAlert,
@@ -421,6 +422,7 @@ export const QuestionBankManager: React.FC = () => {
                     <span className="text-[13px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
                       {q.id}
                     </span>
+                    <StatusBadge status={toDocStatus({ approvalStatus: q.approvalStatus || 'approved' })} />
                     <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       Khối {q.grade || 12}
                     </span>

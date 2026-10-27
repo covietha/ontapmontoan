@@ -1,3 +1,4 @@
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import MathRenderer from './MathRenderer';
 import React from 'react';
 import { 
@@ -223,9 +224,7 @@ export const Overview: React.FC<OverviewProps> = ({
                 <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 text-xs font-bold">
                   Chuyên đề trọng tâm lớp 12
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-semibold">
-                  MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-                </span>
+                <StatusBadge status="pending" audience={isTeacher ? 'teacher' : 'student'} label={isTeacher ? 'Nội dung mẫu, chờ duyệt' : 'Nội dung mẫu, chờ giáo viên duyệt'} />
               </div>
               <h2 className="text-xl font-extrabold text-slate-900 mt-2">
                 {currentTopic.title}

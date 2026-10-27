@@ -18,6 +18,7 @@ import confetti from 'canvas-confetti';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Question, QuestionDifficulty } from '../types';
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import MathRenderer from './MathRenderer';
 
 interface TopicPracticeProps {
@@ -296,9 +297,7 @@ export const TopicPractice: React.FC<TopicPracticeProps> = ({
                   )}
                 </span>
               )}
-              <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-              </span>
+              <StatusBadge status={toDocStatus({ approvalStatus: currentQuestion.approvalStatus, status: currentQuestion.status })} audience={profile?.role === 'teacher' ? 'teacher' : 'student'} showHint={profile?.role !== 'teacher' && toDocStatus({ approvalStatus: currentQuestion.approvalStatus, status: currentQuestion.status }) === 'pending'} />
             </div>
           </div>
 

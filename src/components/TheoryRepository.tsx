@@ -18,6 +18,7 @@ import {
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Lesson, Topic } from '../types';
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import MathRenderer from './MathRenderer';
 
 interface TheoryRepositoryProps {
@@ -236,11 +237,7 @@ export const TheoryRepository: React.FC<TheoryRepositoryProps> = ({
                   <span className="text-sm text-slate-500">
                     Chuyên đề: <strong className="text-slate-700">{currentTopic?.title}</strong>
                   </span>
-                  {activeLesson.status !== 'verified' && (
-                    <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                      MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-                    </span>
-                  )}
+                  <StatusBadge status={toDocStatus({ status: activeLesson.status })} audience={isTeacher ? 'teacher' : 'student'} />
                 </div>
 
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">

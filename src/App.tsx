@@ -311,7 +311,7 @@ function AppContent() {
         {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
 
         {/* Page Content Body */}
-        <main className={examFocus ? 'flex-1 p-2 sm:p-2.5 w-full space-y-0' : 'flex-1 p-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4'}>
+        <main className={examFocus ? 'flex-1 p-2 sm:p-2.5 w-full space-y-0' : 'flex-1 p-4 pb-24 sm:px-6 sm:py-4 sm:pb-6 lg:px-8 lg:py-5 max-w-[88rem] w-full mx-auto space-y-4'}>
           
           {/* ========================================================================= */}
           {/* STUDENT INTERFACE (Strictly 5 sections) */}

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StatusBadge } from './StatusBadge';
 import {
   Plus, Upload, Download, Trash2, Save, Send, ArrowUp, ArrowDown, Pencil,
   Eye, EyeOff, AlertTriangle, CheckCircle2, FileText, X, Clock, ListChecks
@@ -672,9 +673,7 @@ export const ExamManager: React.FC<Props> = ({ onModeChange }) => {
             <li key={ex.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">{ex.code}</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${ex.status === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                  {ex.status === 'published' ? 'Đã phát hành' : 'Bản nháp'}
-                </span>
+                <StatusBadge status={ex.status === 'published' ? 'published' : 'draft'} />
                 <span className="ml-auto text-xs text-slate-500">Lớp {ex.grade}</span>
               </div>
               <h3 className="font-display font-semibold text-slate-900 leading-snug">{ex.title}</h3>

@@ -26,6 +26,7 @@ import {
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Lesson, Question, QuestionDifficulty, ContentStatus } from '../types';
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import MathRenderer from './MathRenderer';
 import { db } from '../firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
@@ -447,13 +448,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700">
                         {lesson.lessonCode}
                       </span>
-                      <span className={`text-[12.5px] font-bold px-2 py-0.5 rounded ${
-                        lesson.status === 'verified'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {lesson.status === 'verified' ? 'ĐÃ KIỂM DUYỆT CHÍNH THỨC' : 'MẪU – CẦN DUYỆT'}
-                      </span>
+                      <StatusBadge status={toDocStatus({ status: lesson.status })} />
                     </div>
                     <h4 className="text-sm font-bold text-slate-900">{lesson.title}</h4>
                     <p className="text-xs text-slate-500">{lesson.objectives[0]}</p>
@@ -496,13 +491,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                       <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white">
                         {q.code}
                       </span>
-                      <span className={`text-[12.5px] font-bold px-2 py-0.5 rounded ${
-                        q.status === 'verified'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {q.status === 'verified' ? 'ĐÃ KIỂM DUYỆT' : 'MẪU – CẦN DUYỆT'}
-                      </span>
+                      <StatusBadge status={toDocStatus({ status: q.status })} />
                       <span className="text-xs text-slate-500">
                         Liên kết bài: <strong>{q.lessonCode}</strong>
                       </span>

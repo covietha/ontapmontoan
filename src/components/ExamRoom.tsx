@@ -19,6 +19,7 @@ import confetti from 'canvas-confetti';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Exam, Question } from '../types';
+import { StatusBadge, toDocStatus } from './StatusBadge';
 import MathRenderer from './MathRenderer';
 import { setExamLock, registerExamSubmitter } from '../utils/examLock';
 
@@ -349,13 +350,9 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                         {exam.code}
                       </span>
                       {exam.isCustom ? (
-                        <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Đề của giáo viên
-                        </span>
+                        <StatusBadge status="published" audience={profile?.role === 'teacher' ? 'teacher' : 'student'} />
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[12.5px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                          MẪU – CẦN GIÁO VIÊN KIỂM DUYỆT
-                        </span>
+                        <StatusBadge status={toDocStatus({ status: exam.status })} audience={profile?.role === 'teacher' ? 'teacher' : 'student'} showHint={profile?.role !== 'teacher'} />
                       )}
                     </div>
 
@@ -519,7 +516,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                   key={optIdx}
                   disabled={isFinished}
                   onClick={() => handleSelectOption(q.id, optIdx)}
-                  className={`w-full text-left ${isFinished ? 'p-4 rounded-2xl gap-4' : 'px-3 py-2 rounded-xl gap-3'} border-2 transition-all flex items-start ${style}`}
+                  className={`w-full text-left ${isFinished ? 'p-4 rounded-2xl gap-4' : 'px-3 py-3 min-h-12 rounded-xl gap-3'} border-2 transition-all flex items-start ${style}`}
                 >
                   <span className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center shrink-0 text-sm ${
                     isFinished && isCorrect ? 'bg-emerald-600 text-white' : isFinished && isSelected ? 'bg-rose-600 text-white' : isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
@@ -553,7 +550,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                           aria-pressed={on}
                           aria-label={`Ý ${'abcd'[si]}: ${v ? 'Đúng' : 'Sai'}`}
                           onClick={() => setTruth(q.id, si, v)}
-                          className={`${isFinished ? 'w-12 h-12' : 'w-10 h-10'} rounded-xl border-2 font-bold transition-all ${
+                          className={`${isFinished ? 'w-12 h-12' : 'w-11 h-11'} rounded-xl border-2 font-bold transition-all ${
                             on
                               ? isFinished ? (right ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'bg-blue-600 border-blue-600 text-white'
                               : correctOne ? 'border-emerald-500 text-emerald-700 bg-white' : 'border-slate-300 text-slate-600 bg-white hover:border-blue-400'
@@ -646,6 +643,31 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
     );
   };
 
+  const unansweredIdx = examQuestions.map((q, i) => ({ q, i })).filter(x => !isAnswered(x.q, answers[x.q.id])).map(x => x.i);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  /** Tiến độ: "Câu 5/22", số câu đã làm và trạng thái của câu đang xem. */
+  const progressBar = (
+    <div className="shrink-0 pb-3 mb-3 border-b border-slate-100 space-y-2" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-base font-bold text-slate-900">
+          Câu {currentQuestionIdx + 1}<span className="text-slate-500 font-semibold">/{examQuestions.length}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          {currentQ && (isAnswered(currentQ, answers[currentQ.id]) ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-emerald-300 bg-emerald-50 text-emerald-900 font-semibold"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Đã chọn</span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-300 bg-slate-50 text-slate-700 font-semibold"><AlertCircle className="w-4 h-4" aria-hidden="true" />Chưa chọn</span>
+          ))}
+          <span className="text-slate-600 font-semibold tabular-nums">Đã làm {answeredCount}/{examQuestions.length}</span>
+        </div>
+      </div>
+      <div className="h-2 rounded-full bg-slate-200 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={examQuestions.length} aria-valuenow={answeredCount} aria-label="Số câu đã làm">
+        <div className="h-full bg-blue-600 transition-all" style={{ width: `${examQuestions.length ? (answeredCount / examQuestions.length) * 100 : 0}%` }} />
+      </div>
+    </div>
+  );
+
   const questionGrid = (
     <>
           <div className="flex items-center justify-between">
@@ -691,7 +713,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
                         key={q.id}
                         onClick={() => goTo(idx)}
                         aria-label={`Câu ${idx + 1}`}
-                        className={`h-10 rounded-xl text-sm font-bold border transition-all flex items-center justify-center ${btnStyle} ${currentQuestionIdx === idx ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
+                        className={`h-11 min-w-11 rounded-xl text-sm font-bold border transition-all flex items-center justify-center ${btnStyle} ${currentQuestionIdx === idx ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
                       >
                         {idx + 1}
                       </button>
@@ -708,21 +730,37 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   const submitModal = (
     <>
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-500" /> Xác nhận nộp bài thi
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="submit-title">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 id="submit-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" aria-hidden="true" /> Nộp bài thi?
             </h3>
-            <div className="text-sm text-slate-600 space-y-2">
-              <p>Bạn đã trả lời <strong>{answeredCount} / {examQuestions.length}</strong> câu hỏi.</p>
-              {answeredCount < examQuestions.length && (
-                <p className="text-rose-600 font-semibold">⚠️ Còn {examQuestions.length - answeredCount} câu chưa trả lời. Bạn có chắc chắn muốn nộp?</p>
+            <div className="text-sm text-slate-700 space-y-3">
+              <p>Em đã trả lời <strong>{answeredCount}/{examQuestions.length}</strong> câu. Thời gian còn lại: <strong>{formatTime(timeLeft)}</strong>.</p>
+              {unansweredIdx.length > 0 ? (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2">
+                  <p className="font-semibold text-amber-900">Còn {unansweredIdx.length} câu chưa trả lời. Bấm vào số câu để quay lại làm:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {unansweredIdx.map(i => (
+                      <button key={i} type="button" onClick={() => { setShowSubmitModal(false); goTo(i); }}
+                        className="min-w-11 h-11 px-3 rounded-lg border border-amber-400 bg-white text-amber-900 font-bold hover:bg-amber-100">{i + 1}</button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="flex items-center gap-2 text-emerald-800 font-semibold"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Em đã trả lời tất cả các câu.</p>
               )}
-              <p>Thời gian còn lại: <strong>{formatTime(timeLeft)}</strong>.</p>
+              {Object.values(markedForReview).some(Boolean) && (
+                <p className="text-slate-600">Em còn {Object.values(markedForReview).filter(Boolean).length} câu đã đánh dấu xem lại.</p>
+              )}
             </div>
-            <div className="flex gap-3 pt-3">
-              <button onClick={() => setShowSubmitModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50">Tiếp tục làm bài</button>
-              <button onClick={handleFinishExam} className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">Xác nhận nộp bài</button>
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+              <button onClick={handleFinishExam} className={`flex-1 min-h-12 rounded-xl font-bold text-sm ${unansweredIdx.length > 0 ? 'border border-slate-300 text-slate-800 hover:bg-slate-50' : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-md'}`}>
+                {unansweredIdx.length > 0 ? 'Vẫn nộp bài' : 'Xác nhận nộp bài'}
+              </button>
+              <button onClick={() => { setShowSubmitModal(false); if (unansweredIdx.length > 0) goTo(unansweredIdx[0]); }} className="flex-1 min-h-12 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-sm">
+                {unansweredIdx.length > 0 ? 'Quay lại kiểm tra' : 'Tiếp tục làm bài'}
+              </button>
             </div>
           </div>
         </div>
@@ -734,8 +772,8 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   if (!isFinished) {
     return (
       <div className="exam-focus flex flex-col lg:flex-row gap-3 lg:h-[calc(100vh-1.25rem)]">
-        <aside className="order-1 lg:order-2 lg:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 flex flex-col gap-3 lg:overflow-y-auto">
-          <div className="min-w-0">
+        <aside className="order-1 lg:order-2 lg:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-3 flex flex-col gap-3 lg:overflow-y-auto sticky top-0 z-30 lg:static max-h-[85vh] overflow-y-auto">
+          <div className="min-w-0 hidden lg:block">
             <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{activeExam.code}</span>
             <h2 className="text-sm font-bold text-slate-900 mt-1 leading-snug line-clamp-3">{activeExam.title}</h2>
           </div>
@@ -746,10 +784,15 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
               <Clock className="w-4 h-4 text-slate-500" />
               <span>{formatTime(timeLeft)}</span>
             </div>
-            <button onClick={() => setShowSubmitModal(true)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 cursor-pointer">
+            <button onClick={() => setShowSubmitModal(true)} className="inline-flex items-center justify-center gap-1.5 px-4 min-h-11 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm shadow-md shadow-emerald-600/20 cursor-pointer">
               <Send className="w-4 h-4" /><span>Nộp bài</span>
             </button>
           </div>
+          <button type="button" onClick={() => setPanelOpen(o => !o)} aria-expanded={panelOpen}
+            className="lg:hidden min-h-11 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 flex items-center justify-center gap-2">
+            {panelOpen ? 'Đóng bảng câu hỏi' : `Bảng câu hỏi · đã làm ${answeredCount}/${examQuestions.length}`}
+          </button>
+          <div className={`${panelOpen ? 'flex' : 'hidden'} lg:flex flex-col gap-3`}>
           <div className="rounded-xl bg-slate-50 border border-slate-200 p-2 space-y-2 text-sm">
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-600">Cỡ chữ</span>
@@ -770,9 +813,11 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
             </div>
           </div>
           {questionGrid}
+          </div>
         </aside>
 
         <section className="order-2 lg:order-1 flex-1 min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 flex flex-col min-h-0">
+          {viewMode !== 'all' && progressBar}
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-6">
             {viewMode === 'all' ? (
               ordered.map((q, idx) => (
@@ -781,18 +826,18 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
             ) : currentQ ? renderQuestion(currentQ, currentQuestionIdx) : null}
           </div>
           {viewMode !== 'all' && currentQ && (
-            <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 shrink-0">
+            <div className="flex items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-100 shrink-0 sticky bottom-0 bg-white pb-1">
               <button
                 disabled={currentQuestionIdx === 0}
                 onClick={() => setCurrentQuestionIdx(prev => prev - 1)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-100 border border-slate-200'}`}
+                className={`px-4 min-h-12 flex-1 sm:flex-none justify-center rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-100 border border-slate-200'}`}
               >
                 <ArrowLeft className="w-4 h-4" /> Câu trước
               </button>
               <button
                 disabled={currentQuestionIdx === examQuestions.length - 1}
                 onClick={() => setCurrentQuestionIdx(prev => prev + 1)}
-                className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === examQuestions.length - 1 ? 'text-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'}`}
+                className={`px-4 min-h-12 flex-1 sm:flex-none justify-center rounded-xl text-sm font-bold flex items-center gap-1.5 ${currentQuestionIdx === examQuestions.length - 1 ? 'text-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'}`}
               >
                 Câu tiếp theo <ArrowRight className="w-4 h-4" />
               </button>

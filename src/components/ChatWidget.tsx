@@ -22,6 +22,15 @@ const SUGGESTIONS = [
 export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
   const { getIdToken, isTeacher } = useAuth();
   const [open, setOpen] = useState(false);
+  // Học sinh có thể ẩn nút trợ lý nếu nó vướng; nhớ lựa chọn trong phiên làm việc
+  const [hidden, setHiddenState] = useState(() => { try { return sessionStorage.getItem('chat_hidden') === '1'; } catch { return false; } });
+  const setHidden = (v: boolean) => { setHiddenState(v); try { sessionStorage.setItem('chat_hidden', v ? '1' : '0'); } catch { /* bỏ qua */ } };
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
   const [locked, setLocked] = useState(isExamLocked());
   const [status, setStatus] = useState<Status | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -87,13 +96,36 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
 
   return (
     <>
-      {!open && (
+      {!open && !hidden && (
+        <div className="fixed z-40 right-3 bottom-14 md:right-4 md:bottom-16">
+          <button
+            onClick={() => setOpen(true)}
+            className="flex items-center justify-center gap-2 w-12 h-12 md:w-auto md:h-auto md:pl-4 md:pr-5 md:py-3 rounded-full bg-flame-500 hover:bg-flame-600 text-white font-semibold text-sm shadow-lg shadow-flame-500/30 cursor-pointer"
+            aria-label="Mở trợ lý Toán"
+            title="Hỏi trợ lý Toán"
+          >
+            <MessageCircle className="w-5 h-5" aria-hidden="true" />
+            <span className="hidden md:inline">Hỏi trợ lý Toán</span>
+          </button>
+          <button
+            onClick={() => setHidden(true)}
+            className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-white text-slate-700 border border-slate-300 shadow flex items-center justify-center"
+            aria-label="Ẩn nút trợ lý"
+            title="Ẩn nút trợ lý"
+          >
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {!open && hidden && (
         <button
-          onClick={() => setOpen(true)}
-          className="fixed z-40 right-4 bottom-14 md:bottom-16 flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-flame-500 hover:bg-flame-600 text-white font-semibold text-sm shadow-lg shadow-flame-500/30 cursor-pointer"
-          aria-label="Mở trợ lý Toán"
+          onClick={() => setHidden(false)}
+          className="fixed z-40 right-0 bottom-24 w-8 h-12 rounded-l-xl bg-flame-500 text-white shadow-md flex items-center justify-center"
+          aria-label="Hiện lại nút trợ lý Toán"
+          title="Hiện lại trợ lý Toán"
         >
-          <MessageCircle className="w-5 h-5" aria-hidden="true" /> Hỏi trợ lý Toán
+          <MessageCircle className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
 
@@ -101,7 +133,7 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
         <section
           role="dialog"
           aria-label="Trợ lý Toán"
-          className="fixed z-50 right-3 bottom-12 w-[calc(100vw-1.5rem)] sm:w-[26rem] h-[min(36rem,calc(100vh-5rem))] bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
+          className="fixed z-50 right-2 left-2 sm:left-auto bottom-10 sm:right-3 sm:bottom-12 sm:w-[26rem] h-[min(34rem,65vh)] sm:h-[min(36rem,calc(100vh-5rem))] bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden"
         >
           <header className="flex items-center gap-2 px-4 py-3 bg-blue-950 text-white">
             <Sparkles className="w-4 h-4 text-flame-500" aria-hidden="true" />
@@ -115,7 +147,7 @@ export const ChatWidget: React.FC<{ context: string }> = ({ context }) => {
                 <Power className="w-3.5 h-3.5" /> {status.enabled ? 'Đang bật' : 'Đang tắt'}
               </button>
             )}
-            <button onClick={() => setOpen(false)} aria-label="Đóng trợ lý" className="p-1.5 rounded-md hover:bg-white/10"><X className="w-5 h-5" /></button>
+            <button onClick={() => setOpen(false)} aria-label="Đóng trợ lý" className="w-11 h-11 -mr-2 rounded-md hover:bg-white/10 flex items-center justify-center"><X className="w-5 h-5" /></button>
           </header>
 
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50">
