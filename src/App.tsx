@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { isExamLocked } from './utils/examLock';
+import { isExamLocked, guardLeave, setLeaveGuard, submitExamNow } from './utils/examLock';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Sidebar } from './components/Sidebar';
@@ -57,8 +57,39 @@ function AppContent() {
   }, []);
 
   // Active Tab state: defaulted by role
-  const [activeTab, setActiveTab] = useState<NavTab>(isTeacher ? 'teacher_overview' : 'student_home');
-  const [practiceSubMode, setPracticeSubMode] = useState<'topics' | 'exam'>('topics');
+  const [activeTab, setActiveTabRaw] = useState<NavTab>(isTeacher ? 'teacher_overview' : 'student_home');
+  const [practiceSubMode, setPracticeSubModeRaw] = useState<'topics' | 'exam'>('topics');
+  const tabRef = useRef(activeTab);
+  const modeRef = useRef(practiceSubMode);
+  tabRef.current = activeTab;
+  modeRef.current = practiceSubMode;
+
+  // Đang làm bài thi: muốn sang trang khác phải nộp bài (hệ thống tự nộp và tính một lần thi)
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const pendingLeave = useRef<(() => void)[]>([]);
+  useEffect(() => {
+    setLeaveGuard((action) => { pendingLeave.current.push(action); setLeaveOpen(true); });
+    return () => setLeaveGuard(null);
+  }, []);
+  const cancelLeave = () => { pendingLeave.current = []; setLeaveOpen(false); };
+  const confirmLeave = async () => {
+    setLeaving(true);
+    try { await submitExamNow(); } finally { setLeaving(false); }
+    const todo = pendingLeave.current;
+    pendingLeave.current = [];
+    setLeaveOpen(false);
+    todo.forEach(fn => fn());
+  };
+  const setActiveTab = (t: NavTab) => {
+    if (t === tabRef.current) return;
+    guardLeave(() => setActiveTabRaw(t));
+  };
+  const setPracticeSubMode = (m: 'topics' | 'exam') => {
+    if (m === modeRef.current) return;
+    guardLeave(() => setPracticeSubModeRaw(m));
+  };
+
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState<string>('topic-dao-ham');
@@ -74,8 +105,8 @@ function AppContent() {
     const hit = resolvePath(window.location.pathname);
     const allowed = hit && (isTeacher ? hit.tab.startsWith('teacher_') : hit.tab.startsWith('student_'));
     const target = allowed ? hit! : { tab: defaultTab(isTeacher), practiceMode: 'topics' as const };
-    setActiveTab(target.tab);
-    setPracticeSubMode(target.practiceMode);
+    setActiveTabRaw(target.tab);
+    setPracticeSubModeRaw(target.practiceMode);
     setRouteReady(true);
   }, [loading, isAuthenticated, isTeacher]);
 
@@ -102,8 +133,14 @@ function AppContent() {
       const hit = resolvePath(window.location.pathname);
       if (!hit) return;
       if (isTeacher !== hit.tab.startsWith('teacher_')) return;
-      setActiveTab(hit.tab);
-      setPracticeSubMode(hit.practiceMode);
+      if (isExamLocked() && (hit.tab !== tabRef.current || hit.practiceMode !== modeRef.current)) {
+        // Nút Quay lại của trình duyệt: giữ nguyên trang làm bài, hỏi xác nhận trước khi rời
+        window.history.pushState(null, '', pathForTab(tabRef.current, modeRef.current));
+        guardLeave(() => { setActiveTabRaw(hit.tab); setPracticeSubModeRaw(hit.practiceMode); });
+        return;
+      }
+      setActiveTabRaw(hit.tab);
+      setPracticeSubModeRaw(hit.practiceMode);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -181,6 +218,21 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex bg-[var(--paper)] text-slate-900" style={{ ['--tone' as any]: nav.tone }}>
+      {leaveOpen && (
+        <div className="fixed inset-0 z-[80] bg-slate-950/60 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="leave-title">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 id="leave-title" className="font-display font-semibold text-slate-900 text-lg">Em đang làm bài thi</h3>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              Muốn sang trang khác, em phải nộp bài trước. Nếu rời đi bây giờ, hệ thống sẽ <strong>nộp bài ngay</strong> với những câu em đã làm và <strong>tính là một lần thi</strong>.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button type="button" onClick={cancelLeave} disabled={leaving} className="rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2.5">Ở lại làm bài</button>
+              <button type="button" onClick={confirmLeave} disabled={leaving} className="rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 text-sm font-semibold px-4 py-2.5">{leaving ? 'Đang nộp bài…' : 'Nộp bài và rời đi'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(t) => { setActiveTab(t); window.scrollTo({ top: 0 }); }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   FileText, 
   Clock, 
@@ -20,7 +20,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Exam, Question } from '../types';
 import MathRenderer from './MathRenderer';
-import { setExamLock } from '../utils/examLock';
+import { setExamLock, registerExamSubmitter } from '../utils/examLock';
 
 /** Kết quả chấm từng câu do máy chủ trả về. */
 interface Detail {
@@ -99,6 +99,44 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
     return () => setExamLock(false);
   }, [isInTestMode, isFinished]);
 
+  // Nộp bài khi học sinh chọn rời phòng thi (dùng bản mới nhất của hàm nộp bài)
+  const finishRef = useRef<() => Promise<void>>(async () => {});
+  const tokenRef = useRef<string | null>(null);
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (!isInTestMode || isFinished) return;
+    return registerExamSubmitter(() => finishRef.current());
+  }, [isInTestMode, isFinished]);
+
+  // Tải lại, đóng trang hoặc thoát trình duyệt khi đang làm bài: hỏi lại, và nếu vẫn rời đi thì tự nộp bài
+  const liveRef = useRef({ exam: activeExam, answers, timeLeft });
+  liveRef.current = { exam: activeExam, answers, timeLeft };
+  useEffect(() => {
+    if (!isInTestMode || isFinished) return;
+    autoSent.current = false;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    const onPageHide = () => {
+      const { exam, answers: ans, timeLeft: left } = liveRef.current;
+      if (!exam || autoSent.current) return;
+      autoSent.current = true;
+      const spent = Math.max(1, exam.durationMinutes * 60 - left);
+      try {
+        fetch('/api/exams/grade', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json', ...(tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}) },
+          body: JSON.stringify({ examId: exam.id, userAnswers: ans, timeSpentSeconds: spent })
+        });
+      } catch { /* trình duyệt đã đóng */ }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, [isInTestMode, isFinished]);
+
   // Timer effect
   useEffect(() => {
     if (!isInTestMode || isFinished || timeLeft <= 0) return;
@@ -118,6 +156,7 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
   }, [isInTestMode, isFinished, timeLeft]);
 
   const handleStartExam = (exam: Exam) => {
+    getIdToken().then(t => { tokenRef.current = t; }).catch(() => undefined);
     setActiveExam(exam);
     setIsInTestMode(true);
     setCurrentQuestionIdx(0);
@@ -251,6 +290,8 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ onOpenLesson }) => {
       } catch {}
     }
   };
+
+  finishRef.current = handleFinishExam;
 
   // Format MM:SS
   const formatTime = (seconds: number) => {

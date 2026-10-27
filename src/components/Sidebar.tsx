@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { guardLeave } from '../utils/examLock';
 import { useData } from '../context/DataContext';
 import { NAV_ITEMS, NavTab, SCHOOL, pathForTab } from '../config/navigation';
 import { BrandMark } from './BrandMark';
@@ -158,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
             <button
-              onClick={logout}
+              onClick={() => guardLeave(logout)}
               title="Đăng xuất"
               aria-label="Đăng xuất"
               className="p-1.5 rounded-md text-blue-300 hover:text-white hover:bg-white/10 shrink-0"
