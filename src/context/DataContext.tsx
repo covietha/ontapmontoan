@@ -42,6 +42,8 @@ interface DataContextType {
   /** Tải lại các đề giáo viên đã phát hành từ máy chủ. */
   refreshExams: () => Promise<void>;
   refreshRoster: () => Promise<void>;
+  saveClassInfo: (cls: Classroom) => Promise<void>;
+  teacherOptions: { id: string; displayName: string }[];
   allOfficialExams: Exam[];
   hiddenOfficialIds: string[];
   /** Giáo viên lưu/xóa chuyên đề và bài học trên máy chủ; mọi học sinh thấy ngay sau khi tải lại. */
@@ -369,10 +371,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [profile?.uid, refreshExams]);
 
   // Danh sách học sinh và lớp: lấy từ tài khoản học sinh trên máy chủ (nguồn duy nhất, mọi giáo viên thấy như nhau)
+  const [classInfo, setClassInfo] = useState<Record<string, any>>({});
+  const [teacherOptions, setTeacherOptions] = useState<{ id: string; displayName: string }[]>([]);
+
+  const saveClassInfo = async (cls: Classroom) => {
+    const token = await getIdToken();
+    const res = await fetch(`/api/classes/info/${encodeURIComponent(cls.code)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ name: cls.name, academicYear: cls.academicYear, grade: cls.grade, homeroomTeacherId: cls.homeroomTeacherId, homeroomTeacherName: cls.homeroomTeacherName })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
+    setClassInfo(prev => ({ ...prev, [cls.code]: data }));
+    setClassrooms(prev => prev.map(c => (c.code === cls.code ? { ...c, ...cls, updatedAt: new Date().toISOString() } : c)));
+  };
+
   const refreshRoster = useCallback(async () => {
     try {
       const token = await getIdToken();
       if (!token) return;
+      let info: Record<string, any> = {};
+      try {
+        const ri = await fetch('/api/classes/info', { headers: { Authorization: `Bearer ${token}` } });
+        if (ri.ok) { const j = await ri.json(); info = j.info || {}; setClassInfo(info); setTeacherOptions(j.teachers || []); }
+      } catch { /* dùng thông tin đã có */ }
       const res = await fetch('/api/accounts', { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return;
       const data = await res.json();
@@ -385,7 +408,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const codes = Array.from(new Set(accs.map(a => String(a.classroom || '').toUpperCase()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
       const now = new Date().toISOString();
       setClassrooms(prev => codes.map(code => {
-        const old = prev.find(c => c.code === code);
+        const old0 = prev.find(c => c.code === code);
+        const saved = info[code];
+        const old = old0 && saved ? { ...old0, name: saved.name, academicYear: saved.academicYear, grade: saved.grade || old0.grade, homeroomTeacherId: saved.homeroomTeacherId, homeroomTeacherName: saved.homeroomTeacherName } : old0;
+        if (!old && saved) {
+          return { id: `cls-2025-${code.toLowerCase()}`, code, name: saved.name, academicYear: saved.academicYear, grade: saved.grade || 12,
+            homeroomTeacherId: saved.homeroomTeacherId || '', homeroomTeacherName: saved.homeroomTeacherName || '', subjectTeacherIds: [], status: 'active', createdAt: now, updatedAt: now } as Classroom;
+        }
+        if (saved) return old as Classroom;
         if (old) {
           // Tên lớp theo danh sách nhà trường; xóa giáo viên chủ nhiệm mẫu cũ chưa do thầy cô tự gán
           const demo = INITIAL_CLASSROOMS.find(c => c.code === code);
@@ -877,6 +907,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hiddenOfficialIds: hiddenOfficial,
         refreshExams,
         refreshRoster,
+        saveClassInfo,
+        teacherOptions,
         saveTopic,
         saveLesson,
         deleteTopic,

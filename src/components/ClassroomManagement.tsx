@@ -39,6 +39,8 @@ export const ClassroomManagement: React.FC = () => {
     students, 
     addClassroom, 
     updateClassroom, 
+    saveClassInfo,
+    teacherOptions,
     archiveClassroom, 
     addStudentsBatch, 
     transferStudent,
@@ -124,14 +126,22 @@ export const ClassroomManagement: React.FC = () => {
     }
 
     if (editingClassroom) {
-      await updateClassroom({
-        ...editingClassroom,
-        code: classCode.trim().toUpperCase(),
-        name: className.trim(),
-        academicYear: classYear.trim(),
-        grade: classGrade,
-        homeroomTeacherName: homeroomTeacherName.trim(),
-      });
+      const hrName = homeroomTeacherName.trim();
+      const match = teacherOptions.find(t => t.displayName.toLowerCase() === hrName.toLowerCase());
+      try {
+        await saveClassInfo({
+          ...editingClassroom,
+          name: className.trim(),
+          academicYear: classYear.trim(),
+          grade: classGrade,
+          homeroomTeacherName: hrName,
+          homeroomTeacherId: match ? match.id : '',
+          subjectTeacherIds: match && !editingClassroom.subjectTeacherIds.includes(match.id) ? [...editingClassroom.subjectTeacherIds, match.id] : editingClassroom.subjectTeacherIds
+        });
+      } catch (err: any) {
+        setClassModalError(err.message || 'Không lưu được thông tin lớp.');
+        return;
+      }
       setShowClassModal(false);
       setEditingClassroom(null);
     } else {
@@ -426,9 +436,28 @@ export const ClassroomManagement: React.FC = () => {
                       </span>
                       <h3 className="font-bold text-sm text-slate-900 mt-2">{c.name}</h3>
                     </div>
-                    <span className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 bg-slate-100 text-slate-600">
-                      Khối {c.grade}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-slate-100 text-slate-600">
+                        Khối {c.grade}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingClassroom(c);
+                          setClassCode(c.code);
+                          setClassName(c.name);
+                          setClassYear(c.academicYear);
+                          setClassGrade(c.grade);
+                          setHomeroomTeacherName(c.homeroomTeacherName || '');
+                          setClassModalError(null);
+                          setShowClassModal(true);
+                        }}
+                        className="text-[12.5px] font-bold px-2.5 py-0.5 rounded-full text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      >
+                        Sửa lớp
+                      </button>
+                    </div>
                   </div>
 
                   <div className="text-xs text-slate-500 space-y-1">
@@ -831,7 +860,9 @@ export const ClassroomManagement: React.FC = () => {
                   onChange={(e) => setClassCode(e.target.value)}
                   placeholder="12A1"
                   required
-                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase"
+                  readOnly={!!editingClassroom}
+                  title={editingClassroom ? 'Mã lớp gắn với tài khoản học sinh nên không đổi được' : undefined}
+                  className={`w-full px-3 py-2 text-xs border border-slate-200 rounded-xl font-mono uppercase ${editingClassroom ? 'bg-slate-100 text-slate-500' : 'bg-slate-50'}`}
                 />
               </div>
 
@@ -880,12 +911,17 @@ export const ClassroomManagement: React.FC = () => {
                   type="text"
                   value={homeroomTeacherName}
                   onChange={(e) => setHomeroomTeacherName(e.target.value)}
-                  placeholder="Nguyễn Văn Đăng"
+                  placeholder="Chọn hoặc nhập tên giáo viên"
+                  list="homeroom-teachers"
                   required
                   className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
             </div>
+
+            <datalist id="homeroom-teachers">
+              {teacherOptions.map(t => <option key={t.id} value={t.displayName} />)}
+            </datalist>
 
             <div className="flex justify-end gap-2 pt-2">
               <button

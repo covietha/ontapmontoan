@@ -1506,6 +1506,32 @@ async function createExpressApp() {
     const studentIds = Array.from(new Set(wanted.filter((id) => valid.has(id))));
     return { value: { name, grade, academicYear, description, studentIds } };
   };
+  const INFO = "classInfo";
+  app.get("/api/classes/info", wrapAsync(async (req, res) => {
+    if (!await authTeacher(req, res)) return;
+    const rows = await store.list(INFO);
+    const info = {};
+    rows.forEach((r) => {
+      info[r.code] = r;
+    });
+    const teachers = (await listAccounts()).filter((a) => a.role === "teacher" && a.status === "active").map((a) => ({ id: a.id, displayName: a.displayName })).sort((a, b) => a.displayName.localeCompare(b.displayName, "vi"));
+    return res.json({ info, teachers });
+  }));
+  app.put("/api/classes/info/:code", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const code = String(req.params.code || "").toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(code)) return res.status(400).json({ error: "M\xE3 l\u1EDBp kh\xF4ng h\u1EE3p l\u1EC7." });
+    const name = String(req.body?.name ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+    const academicYear = String(req.body?.academicYear ?? "").trim().slice(0, 20);
+    if (!name || !academicYear) return res.status(400).json({ error: "Vui l\xF2ng nh\u1EADp t\xEAn l\u1EDBp v\xE0 n\u0103m h\u1ECDc." });
+    const grade = [10, 11, 12].includes(Number(req.body?.grade)) ? Number(req.body.grade) : 12;
+    const homeroomTeacherName = String(req.body?.homeroomTeacherName ?? "").replace(/\s+/g, " ").trim().slice(0, 100);
+    const homeroomTeacherId = String(req.body?.homeroomTeacherId ?? "").trim().slice(0, 80);
+    const doc = { id: code, code, name, academicYear, grade, homeroomTeacherId, homeroomTeacherName, updatedBy: user.email, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    await store.set(INFO, code, doc);
+    return res.json(doc);
+  }));
   app.get("/api/classes", wrapAsync(async (req, res) => {
     if (!await authTeacher(req, res)) return;
     const valid = new Set((await listAccounts()).filter((a) => a.role === "student").map((a) => a.id));
