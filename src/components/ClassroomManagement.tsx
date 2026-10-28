@@ -41,6 +41,7 @@ export const ClassroomManagement: React.FC = () => {
     addClassroom, 
     updateClassroom, 
     saveClassInfo,
+    deleteClassroom,
     teacherOptions,
     archiveClassroom, 
     addStudentsBatch, 
@@ -115,6 +116,25 @@ export const ClassroomManagement: React.FC = () => {
       return s.studentCode.toLowerCase().includes(q) || s.fullName.toLowerCase().includes(q);
     });
   }, [classStudents, searchStudentQuery]);
+
+  // Xóa lớp và toàn bộ học sinh trong lớp
+  const [deleteTarget, setDeleteTarget] = useState<{ code: string; name: string; count: number } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+  const runDeleteClass = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true); setDeleteError(null);
+    try {
+      const n = await deleteClassroom(deleteTarget.code);
+      setDeleteMsg(`Đã xóa lớp ${deleteTarget.code} và ${n} tài khoản học sinh.`);
+      setDeleteTarget(null); setDeleteConfirmText('');
+      setSelectedClassroomId('');
+    } catch (e: any) {
+      setDeleteError(e.message || 'Không xóa được lớp.');
+    } finally { setDeleteBusy(false); }
+  };
 
   // Xuất danh sách tài khoản (Excel)
   const [exportMsg, setExportMsg] = useState<string | null>(null);
@@ -506,6 +526,14 @@ export const ClassroomManagement: React.FC = () => {
                         title="Xuất danh sách tài khoản của lớp ra Excel"
                       >
                         Xuất Excel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ code: c.code, name: c.name, count: studentsInClass.length }); setDeleteConfirmText(''); setDeleteError(null); }}
+                        className="text-[12.5px] font-bold px-3 py-1 rounded-lg text-rose-800 bg-rose-50 hover:bg-rose-100"
+                        title="Xóa lớp và toàn bộ học sinh trong lớp"
+                      >
+                        Xóa lớp
                       </button>
                   </div>
 
@@ -1082,6 +1110,36 @@ export const ClassroomManagement: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {deleteMsg && (
+        <div role="status" className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl bg-emerald-700 text-white text-sm font-semibold shadow-lg max-w-[92vw]">
+          {deleteMsg} <button type="button" className="ml-2 underline" onClick={() => setDeleteMsg(null)}>Đóng</button>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="del-class-title">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 id="del-class-title" className="text-lg font-bold text-rose-800">Xóa lớp {deleteTarget.code}?</h3>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              Hệ thống sẽ xóa lớp <strong>{deleteTarget.name || deleteTarget.code}</strong> và <strong>toàn bộ {deleteTarget.count} tài khoản học sinh</strong> trong lớp. Các em không đăng nhập được nữa. Việc này <strong>không khôi phục được</strong>; điểm các bài đã thi vẫn được giữ.
+            </p>
+            <label className="block text-sm font-semibold text-slate-800">
+              Để xác nhận, gõ mã lớp <span className="font-mono bg-slate-100 px-1.5 rounded">{deleteTarget.code}</span>
+              <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} autoFocus
+                className="mt-1 w-full min-h-11 px-3 rounded-xl border border-slate-300 font-mono focus:outline-none focus:ring-2 focus:ring-rose-500/30" />
+            </label>
+            {deleteError && <div role="alert" className="text-sm text-rose-800 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{deleteError}</div>}
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleteBusy} className="flex-1 min-h-12 rounded-xl border border-slate-300 text-slate-800 font-bold text-sm">Hủy</button>
+              <button type="button" onClick={runDeleteClass}
+                disabled={deleteBusy || deleteConfirmText.trim().toUpperCase() !== deleteTarget.code.toUpperCase()}
+                className="flex-1 min-h-12 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-sm disabled:opacity-50">
+                {deleteBusy ? 'Đang xóa…' : 'Xóa lớp và học sinh'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

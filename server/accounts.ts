@@ -224,7 +224,7 @@ function ensureSeeded(): Promise<void> {
 // Danh sách tài khoản (hơn 450 bản ghi) được nhiều API đọc lại liên tục: nhớ tạm 60 giây để không tiêu hết hạn mức đọc của Firestore.
 const LIST_TTL_MS = 60_000;
 let listCache: { at: number; rows: StoredAccountRecord[] } | null = null;
-export function invalidateAccountsCache(): void { listCache = null; }
+export function invalidateAccountsCache(): void { listCache = null; byIdCache.clear(); }
 
 export async function listAccounts(): Promise<StoredAccountRecord[]> {
   if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.rows.map((a) => ({ ...a }));
@@ -234,16 +234,30 @@ export async function listAccounts(): Promise<StoredAccountRecord[]> {
   return rows.map((a) => ({ ...a }));
 }
 
+// Mỗi yêu cầu API đều xác thực lại tài khoản: nhớ tạm 60 giây để không tốn 1 lượt đọc cho mỗi yêu cầu.
+// Xóa/khóa/đổi tài khoản đều xóa bộ nhớ tạm của máy chủ đang xử lý, nên chậm nhất sau 60 giây ở các máy chủ còn lại.
+const byIdCache = new Map<string, { at: number; rec: StoredAccountRecord | null }>();
 export async function getAccountById(id: string): Promise<StoredAccountRecord | null> {
+  const hit = byIdCache.get(id);
+  if (hit && Date.now() - hit.at < 60_000) return hit.rec ? { ...hit.rec } : null;
   await ensureSeeded();
-  return (await store.get(ACCOUNTS, id)) as StoredAccountRecord | null;
+  const rec = (await store.get(ACCOUNTS, id)) as StoredAccountRecord | null;
+  if (byIdCache.size > 2000) byIdCache.clear();
+  byIdCache.set(id, { at: Date.now(), rec });
+  return rec ? { ...rec } : null;
 }
 
 /** Tìm theo id, mã đăng nhập hoặc email (không phân biệt hoa thường). */
 export async function findAccount(input: string): Promise<StoredAccountRecord | null> {
   await ensureSeeded();
   const raw = input.trim();
-  const byId = await store.get(ACCOUNTS, raw.toLowerCase()) || await store.get(ACCOUNTS, raw);
+  // Mã đăng nhập của nhà trường (vd 12A101) → id tài khoản sch_acc_12a101: tra thẳng 1 lần, không đọc thừa
+  const lower = raw.toLowerCase();
+  if (/^[a-z0-9._-]{3,40}$/.test(lower)) {
+    const direct = await store.get(ACCOUNTS, `sch_acc_${lower}`);
+    if (direct) return direct as StoredAccountRecord;
+  }
+  const byId = lower.startsWith('sch_acc_') ? (await store.get(ACCOUNTS, lower) || await store.get(ACCOUNTS, raw)) : null;
   if (byId) return byId as StoredAccountRecord;
   const byUser = await store.where(ACCOUNTS, 'username', raw.toUpperCase());
   if (byUser[0]) return byUser[0] as StoredAccountRecord;
@@ -254,7 +268,11 @@ export async function findAccount(input: string): Promise<StoredAccountRecord | 
 export async function saveAccount(account: StoredAccountRecord): Promise<void> {
   await ensureSeeded();
   await store.set(ACCOUNTS, account.id, account as unknown as Doc);
-  invalidateAccountsCache();
+  byIdCache.delete(account.id);
+  if (listCache) {
+    const i = listCache.rows.findIndex((a) => a.id === account.id);
+    if (i >= 0) listCache.rows[i] = { ...account }; else listCache.rows.push({ ...account });
+  }
 }
 
 export async function isTeacherAccountEmail(email: string): Promise<boolean> {

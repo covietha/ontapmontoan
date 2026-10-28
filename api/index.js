@@ -478,6 +478,7 @@ var LIST_TTL_MS = 6e4;
 var listCache = null;
 function invalidateAccountsCache() {
   listCache = null;
+  byIdCache.clear();
 }
 async function listAccounts() {
   if (listCache && Date.now() - listCache.at < LIST_TTL_MS) return listCache.rows.map((a) => ({ ...a }));
@@ -486,14 +487,25 @@ async function listAccounts() {
   listCache = { at: Date.now(), rows };
   return rows.map((a) => ({ ...a }));
 }
+var byIdCache = /* @__PURE__ */ new Map();
 async function getAccountById(id) {
+  const hit = byIdCache.get(id);
+  if (hit && Date.now() - hit.at < 6e4) return hit.rec ? { ...hit.rec } : null;
   await ensureSeeded();
-  return await store.get(ACCOUNTS, id);
+  const rec = await store.get(ACCOUNTS, id);
+  if (byIdCache.size > 2e3) byIdCache.clear();
+  byIdCache.set(id, { at: Date.now(), rec });
+  return rec ? { ...rec } : null;
 }
 async function findAccount(input) {
   await ensureSeeded();
   const raw = input.trim();
-  const byId = await store.get(ACCOUNTS, raw.toLowerCase()) || await store.get(ACCOUNTS, raw);
+  const lower = raw.toLowerCase();
+  if (/^[a-z0-9._-]{3,40}$/.test(lower)) {
+    const direct = await store.get(ACCOUNTS, `sch_acc_${lower}`);
+    if (direct) return direct;
+  }
+  const byId = lower.startsWith("sch_acc_") ? await store.get(ACCOUNTS, lower) || await store.get(ACCOUNTS, raw) : null;
   if (byId) return byId;
   const byUser = await store.where(ACCOUNTS, "username", raw.toUpperCase());
   if (byUser[0]) return byUser[0];
@@ -503,7 +515,12 @@ async function findAccount(input) {
 async function saveAccount(account) {
   await ensureSeeded();
   await store.set(ACCOUNTS, account.id, account);
-  invalidateAccountsCache();
+  byIdCache.delete(account.id);
+  if (listCache) {
+    const i = listCache.rows.findIndex((a) => a.id === account.id);
+    if (i >= 0) listCache.rows[i] = { ...account };
+    else listCache.rows.push({ ...account });
+  }
 }
 async function isTeacherAccountEmail(email) {
   await ensureSeeded();
@@ -1546,6 +1563,35 @@ async function createExpressApp() {
     const doc = { id: code, code, name, academicYear, grade, homeroomTeacherId, homeroomTeacherName, updatedBy: user.email, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
     await store.set(INFO, code, doc);
     return res.json(doc);
+  }));
+  app.delete("/api/classes/roster/:code", wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const code = String(req.params.code || "").trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(code)) return res.status(400).json({ error: "M\xE3 l\u1EDBp kh\xF4ng h\u1EE3p l\u1EC7." });
+    if (String(req.query.confirm || "").trim().toUpperCase() !== code) {
+      return res.status(400).json({ error: "C\u1EA7n g\xF5 \u0111\xFAng m\xE3 l\u1EDBp \u0111\u1EC3 x\xE1c nh\u1EADn x\xF3a." });
+    }
+    invalidateAccountsCache();
+    const victims = (await listAccounts()).filter((a) => a.role === "student" && String(a.classroom || "").toUpperCase() === code);
+    const ids = victims.map((a) => a.id);
+    for (let i = 0; i < ids.length; i += 25) {
+      await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+        await store.delete("schoolAccounts", id);
+        await store.delete("users", id).catch(() => void 0);
+      }));
+    }
+    invalidateAccountsCache();
+    await store.delete(INFO, code).catch(() => void 0);
+    if (ids.length) {
+      const gone = new Set(ids);
+      for (const g of await store.list(GROUPS)) {
+        const keep = (g.studentIds || []).filter((id) => !gone.has(id));
+        if (keep.length !== (g.studentIds || []).length) await store.set(GROUPS, g.id, { ...g, studentIds: keep });
+      }
+    }
+    console.log(`[class-delete] ${user.email} \u0111\xE3 x\xF3a l\u1EDBp ${code} v\xE0 ${ids.length} t\xE0i kho\u1EA3n h\u1ECDc sinh`);
+    return res.json({ success: true, deletedStudents: ids.length, message: `\u0110\xE3 x\xF3a l\u1EDBp ${code} v\xE0 ${ids.length} t\xE0i kho\u1EA3n h\u1ECDc sinh.` });
   }));
   app.get("/api/classes", wrapAsync(async (req, res) => {
     if (!await authTeacher(req, res)) return;

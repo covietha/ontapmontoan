@@ -535,6 +535,39 @@ export async function createExpressApp() {
     return res.json(doc);
   }));
 
+  // Xóa một lớp trong danh sách (12A1…) cùng toàn bộ tài khoản học sinh của lớp. Không khôi phục được.
+  // Điểm các bài đã thi vẫn được giữ. Phải gửi kèm mã lớp để xác nhận.
+  app.delete('/api/classes/roster/:code', wrapAsync(async (req, res) => {
+    const user = await authTeacher(req, res);
+    if (!user) return;
+    const code = String(req.params.code || '').trim().toUpperCase();
+    if (!/^[0-9]{2}[A-Z]{1,3}[0-9]{0,2}$/.test(code)) return res.status(400).json({ error: 'Mã lớp không hợp lệ.' });
+    if (String(req.query.confirm || '').trim().toUpperCase() !== code) {
+      return res.status(400).json({ error: 'Cần gõ đúng mã lớp để xác nhận xóa.' });
+    }
+    invalidateAccountsCache();
+    const victims = (await listAccounts()).filter((a) => a.role === 'student' && String(a.classroom || '').toUpperCase() === code);
+    const ids = victims.map((a) => a.id);
+    for (let i = 0; i < ids.length; i += 25) {
+      await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+        await store.delete('schoolAccounts', id);
+        await store.delete('users', id).catch(() => undefined);
+      }));
+    }
+    invalidateAccountsCache();
+    await store.delete(INFO, code).catch(() => undefined);
+    // Gỡ các học sinh đã xóa khỏi những lớp do giáo viên tạo
+    if (ids.length) {
+      const gone = new Set(ids);
+      for (const g of (await store.list(GROUPS)) as any[]) {
+        const keep = (g.studentIds || []).filter((id: string) => !gone.has(id));
+        if (keep.length !== (g.studentIds || []).length) await store.set(GROUPS, g.id, { ...g, studentIds: keep } as any);
+      }
+    }
+    console.log(`[class-delete] ${user.email} đã xóa lớp ${code} và ${ids.length} tài khoản học sinh`);
+    return res.json({ success: true, deletedStudents: ids.length, message: `Đã xóa lớp ${code} và ${ids.length} tài khoản học sinh.` });
+  }));
+
   app.get('/api/classes', wrapAsync(async (req, res) => {
     if (!(await authTeacher(req, res))) return;
     const valid = new Set((await listAccounts()).filter((a) => a.role === 'student').map((a) => a.id));

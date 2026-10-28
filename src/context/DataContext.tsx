@@ -43,6 +43,8 @@ interface DataContextType {
   refreshExams: () => Promise<void>;
   refreshRoster: () => Promise<void>;
   saveClassInfo: (cls: Classroom) => Promise<void>;
+  /** Xóa lớp và toàn bộ tài khoản học sinh của lớp; trả về số học sinh đã xóa. */
+  deleteClassroom: (code: string) => Promise<number>;
   teacherOptions: { id: string; displayName: string }[];
   allOfficialExams: Exam[];
   hiddenOfficialIds: string[];
@@ -385,6 +387,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
     setClassInfo(prev => ({ ...prev, [cls.code]: data }));
     setClassrooms(prev => prev.map(c => (c.code === cls.code ? { ...c, ...cls, updatedAt: new Date().toISOString() } : c)));
+  };
+
+  const deleteClassroom = async (code: string): Promise<number> => {
+    const token = await getIdToken();
+    const res = await fetch(`/api/classes/roster/${encodeURIComponent(code)}?confirm=${encodeURIComponent(code)}`, {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
+    await refreshRoster();
+    return data.deletedStudents ?? 0;
   };
 
   const refreshRoster = useCallback(async () => {
@@ -908,6 +922,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshExams,
         refreshRoster,
         saveClassInfo,
+        deleteClassroom,
         teacherOptions,
         saveTopic,
         saveLesson,
