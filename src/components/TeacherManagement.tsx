@@ -50,6 +50,8 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
     topics, 
     exams,
     examResults,
+    students,
+    classrooms,
     verifyContent, 
     addLesson, 
     addQuestion, 
@@ -92,6 +94,47 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
   // Results subtab state
   const [resultSearch, setResultSearch] = useState<string>('');
   const [resultScoreFilter, setResultScoreFilter] = useState<'all' | 'high' | 'mid' | 'low'>('all');
+  const [resultClass, setResultClass] = useState<string>('all');
+  const [resultExam, setResultExam] = useState<string>('all');
+  const [resultSort, setResultSort] = useState<'newest' | 'class' | 'score_desc' | 'score_asc'>('newest');
+  const studentByAccount = React.useMemo(() => new Map(students.filter(s => s.accountId).map(s => [s.accountId as string, s])), [students]);
+  const resultRows = React.useMemo(() => {
+    const q = resultSearch.trim().toLowerCase();
+    const rows = examResults.map(r => {
+      const st = studentByAccount.get(r.studentId);
+      return { r, name: st?.fullName || '', code: st?.studentCode || '', cls: st?.classroomCode || '' };
+    }).filter(({ r, name, code, cls }) => {
+      if (resultClass !== 'all' && cls !== resultClass) return false;
+      if (resultExam !== 'all' && r.examId !== resultExam) return false;
+      if (resultScoreFilter === 'high' && !(r.score >= 8)) return false;
+      if (resultScoreFilter === 'mid' && !(r.score >= 5 && r.score < 8)) return false;
+      if (resultScoreFilter === 'low' && !(r.score < 5)) return false;
+      if (!q) return true;
+      return [name, code, cls, r.studentEmail, r.examTitle].some(v => (v || '').toLowerCase().includes(q));
+    });
+    const byDate = (a: typeof rows[0], b: typeof rows[0]) => new Date(b.r.completedAt).getTime() - new Date(a.r.completedAt).getTime();
+    rows.sort((a, b) => {
+      if (resultSort === 'score_desc') return b.r.score - a.r.score || byDate(a, b);
+      if (resultSort === 'score_asc') return a.r.score - b.r.score || byDate(a, b);
+      if (resultSort === 'class') return (a.cls || '~').localeCompare(b.cls || '~', 'vi', { numeric: true }) || a.name.localeCompare(b.name, 'vi') || byDate(a, b);
+      return byDate(a, b);
+    });
+    return rows;
+  }, [examResults, studentByAccount, resultSearch, resultClass, resultExam, resultScoreFilter, resultSort]);
+  const resultExamOptions = React.useMemo(() => {
+    const m = new Map<string, string>();
+    examResults.forEach(r => m.set(r.examId, r.examTitle));
+    return Array.from(m, ([id, title]) => ({ id, title }));
+  }, [examResults]);
+  // Tổng hợp theo lớp đang chọn: số học sinh đã thi / sĩ số, điểm trung bình, danh sách chưa thi
+  const classSummary = React.useMemo(() => {
+    if (resultClass === 'all') return null;
+    const roster = students.filter(s => s.classroomCode === resultClass && s.status === 'active');
+    const done = new Set(resultRows.map(x => x.r.studentId));
+    const avg = resultRows.length ? resultRows.reduce((t, x) => t + x.r.score, 0) / resultRows.length : 0;
+    const missing = roster.filter(s => !s.accountId || !done.has(s.accountId)).sort((a, b) => a.fullName.localeCompare(b.fullName, 'vi'));
+    return { total: roster.length, took: roster.length - missing.length, avg, missing };
+  }, [resultClass, students, resultRows]);
   const [selectedResultDetails, setSelectedResultDetails] = useState<any | null>(null);
 
   // Admins subtab state
@@ -711,42 +754,76 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative w-48 sm:w-56">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div className="relative w-full sm:w-60">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
                 <input
                   type="text"
                   value={resultSearch}
                   onChange={(e) => setResultSearch(e.target.value)}
-                  placeholder="Tìm học sinh, đề thi..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                  aria-label="Tìm học sinh hoặc đề thi"
+                  placeholder="Tìm tên, mã học sinh, đề thi..."
+                  className="w-full pl-9 pr-3 min-h-10 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </div>
-
-              <select
-                value={resultScoreFilter}
-                onChange={(e) => setResultScoreFilter(e.target.value as any)}
-                className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-700 focus:outline-none"
-              >
+              <select aria-label="Lọc theo lớp" value={resultClass} onChange={(e) => setResultClass(e.target.value)}
+                className="px-3 min-h-10 bg-slate-50 border border-slate-300 text-sm font-semibold rounded-xl text-slate-800">
+                <option value="all">Tất cả các lớp</option>
+                {classrooms.map(c => <option key={c.code} value={c.code}>Lớp {c.code}</option>)}
+              </select>
+              <select aria-label="Lọc theo đề thi" value={resultExam} onChange={(e) => setResultExam(e.target.value)}
+                className="px-3 min-h-10 max-w-56 bg-slate-50 border border-slate-300 text-sm font-semibold rounded-xl text-slate-800">
+                <option value="all">Tất cả đề thi</option>
+                {resultExamOptions.map(o => <option key={o.id} value={o.id}>{o.title}</option>)}
+              </select>
+              <select aria-label="Lọc theo mức điểm" value={resultScoreFilter} onChange={(e) => setResultScoreFilter(e.target.value as any)}
+                className="px-3 min-h-10 bg-slate-50 border border-slate-300 text-sm font-semibold rounded-xl text-slate-800">
                 <option value="all">Mọi mức điểm</option>
                 <option value="high">Giỏi / Xuất sắc (≥ 8.0)</option>
                 <option value="mid">Trung bình - Khá (5.0 - 7.9)</option>
                 <option value="low">Cần phụ đạo (&lt; 5.0)</option>
               </select>
+              <select aria-label="Sắp xếp" value={resultSort} onChange={(e) => setResultSort(e.target.value as any)}
+                className="px-3 min-h-10 bg-slate-50 border border-slate-300 text-sm font-semibold rounded-xl text-slate-800">
+                <option value="newest">Mới nộp trước</option>
+                <option value="class">Theo lớp, tên học sinh</option>
+                <option value="score_desc">Điểm cao đến thấp</option>
+                <option value="score_asc">Điểm thấp đến cao</option>
+              </select>
             </div>
           </div>
+
+          {classSummary && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-700">
+                <span>Lớp <strong>{resultClass}</strong></span>
+                <span>Đã nộp bài: <strong>{classSummary.took}/{classSummary.total}</strong> học sinh</span>
+                <span>Số bài nộp: <strong>{resultRows.length}</strong></span>
+                <span>Điểm trung bình: <strong>{resultRows.length ? classSummary.avg.toFixed(1) : '–'}</strong></span>
+              </div>
+              {classSummary.missing.length > 0 && (
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-semibold text-amber-900 min-h-10 flex items-center">Còn {classSummary.missing.length} học sinh chưa nộp bài (bấm để xem danh sách)</summary>
+                  <ul className="mt-2 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 text-slate-700">
+                    {classSummary.missing.map(m => <li key={m.id}>{m.fullName} <span className="text-slate-500 font-mono text-xs">({m.studentCode})</span></li>)}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
 
           {/* Results Table */}
           {examResults.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 text-slate-400 text-xs">
-              Chưa có kết quả thi thử nào được ghi nhận. Hãy cho học sinh làm bài thi trong Phòng Luyện Đề!
+              Chưa có bài nộp nào. Khi học sinh nộp bài thi thử, điểm sẽ hiện ở đây kèm tên và lớp.
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-4">Học sinh</th>
+                      <th className="py-3 px-4">Lớp</th>
                       <th className="py-3 px-4">Tên đề thi</th>
                       <th className="py-3 px-4">Điểm số</th>
                       <th className="py-3 px-4">Số câu đúng</th>
@@ -757,23 +834,13 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {examResults
-                      .filter(r => {
-                        const matchSearch = resultSearch === '' || 
-                          r.studentEmail.toLowerCase().includes(resultSearch.toLowerCase()) ||
-                          r.examTitle.toLowerCase().includes(resultSearch.toLowerCase());
-                        const matchScore = resultScoreFilter === 'all' ||
-                          (resultScoreFilter === 'high' && r.score >= 8) ||
-                          (resultScoreFilter === 'mid' && r.score >= 5 && r.score < 8) ||
-                          (resultScoreFilter === 'low' && r.score < 5);
-                        return matchSearch && matchScore;
-                      })
-                      .map(res => (
+                    {resultRows.map(({ r: res, name, code, cls }) => (
                         <tr key={res.id} className="hover:bg-slate-50/70 transition-colors">
                           <td className="py-3 px-4 font-semibold text-slate-900">
-                            <div>{res.studentEmail}</div>
-                            <div className="text-[12.5px] text-slate-400 font-mono">UID: {res.studentId.substring(0, 12)}...</div>
+                            <div className="text-sm">{name || 'Tài khoản đã xóa hoặc chưa tải danh sách'}</div>
+                            <div className="text-xs text-slate-600 font-mono">{code || res.studentEmail}</div>
                           </td>
+                          <td className="py-3 px-4 font-semibold">{cls || '–'}</td>
                           <td className="py-3 px-4 font-medium text-slate-800">{res.examTitle}</td>
                           <td className="py-3 px-4">
                             <span className={`font-bold px-2 py-0.5 rounded-md ${
@@ -806,7 +873,10 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                             </button>
                           </td>
                         </tr>
-                      ))}
+                    ))}
+                    {resultRows.length === 0 && (
+                      <tr><td colSpan={9} className="py-8 text-center text-sm text-slate-600">Không có bài nộp nào khớp với bộ lọc. Thầy, cô đổi lớp, đề thi hoặc mức điểm để xem thêm.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
