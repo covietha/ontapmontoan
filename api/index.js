@@ -1367,6 +1367,27 @@ async function createExpressApp() {
     const rows = isTeacher ? await store.list(RESULTS) : await store.where(RESULTS, "studentId", uid);
     return res.json(rows.map(({ examSnapshot: _s, ...r }) => r).sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
+  app.post("/api/exams/results/delete", wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || "Y\xEAu c\u1EA7u x\xE1c th\u1EF1c danh t\xEDnh" });
+    }
+    if (!authResult.user.isRootAdmin) {
+      return res.status(403).json({ error: "Ch\u1EC9 Qu\u1EA3n tr\u1ECB vi\xEAn m\u1EDBi \u0111\u01B0\u1EE3c x\xF3a k\u1EBFt qu\u1EA3 thi." });
+    }
+    const ids = Array.isArray(req.body?.ids) ? Array.from(new Set(req.body.ids.map((x) => String(x)))) : [];
+    if (ids.length === 0) return res.status(400).json({ error: "Ch\u01B0a ch\u1ECDn b\xE0i n\xE0o \u0111\u1EC3 x\xF3a." });
+    if (ids.length > 1e3) return res.status(400).json({ error: "M\u1ED7i l\u1EA7n x\xF3a t\u1ED1i \u0111a 1000 b\xE0i." });
+    if (ids.some((id) => !/^[A-Za-z0-9_.-]{1,120}$/.test(id))) return res.status(400).json({ error: "M\xE3 b\xE0i kh\xF4ng h\u1EE3p l\u1EC7." });
+    for (let i = 0; i < ids.length; i += 25) {
+      await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+        await store.delete(RESULTS, id);
+        await store.delete("examResults", id).catch(() => void 0);
+      }));
+    }
+    console.log(`[results-delete] ${authResult.user.email} \u0111\xE3 x\xF3a ${ids.length} k\u1EBFt qu\u1EA3 thi`);
+    return res.json({ success: true, deleted: ids.length });
+  }));
   app.get("/api/exams/results/:id/review", wrapAsync(async (req, res) => {
     const authResult = await verifyFirebaseToken(req.headers.authorization);
     if (!authResult.success || !authResult.user) {

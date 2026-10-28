@@ -320,6 +320,29 @@ export async function createExpressApp() {
     return res.json(rows.map(({ examSnapshot: _s, ...r }) => r).sort((x, y) => y.gradedAt.localeCompare(x.gradedAt)));
   });
 
+  // Quản trị viên xóa kết quả thi (một hoặc nhiều bài) để giải phóng dung lượng. Không khôi phục được.
+  app.post('/api/exams/results/delete', wrapAsync(async (req, res) => {
+    const authResult = await verifyFirebaseToken(req.headers.authorization);
+    if (!authResult.success || !authResult.user) {
+      return res.status(authResult.statusCode || 401).json({ error: authResult.error || 'Yêu cầu xác thực danh tính' });
+    }
+    if (!authResult.user.isRootAdmin) {
+      return res.status(403).json({ error: 'Chỉ Quản trị viên mới được xóa kết quả thi.' });
+    }
+    const ids: string[] = Array.isArray(req.body?.ids) ? Array.from(new Set(req.body.ids.map((x: any) => String(x)))) as string[] : [];
+    if (ids.length === 0) return res.status(400).json({ error: 'Chưa chọn bài nào để xóa.' });
+    if (ids.length > 1000) return res.status(400).json({ error: 'Mỗi lần xóa tối đa 1000 bài.' });
+    if (ids.some((id) => !/^[A-Za-z0-9_.-]{1,120}$/.test(id))) return res.status(400).json({ error: 'Mã bài không hợp lệ.' });
+    for (let i = 0; i < ids.length; i += 25) {
+      await Promise.all(ids.slice(i, i + 25).map(async (id) => {
+        await store.delete(RESULTS, id);
+        await store.delete('examResults', id).catch(() => undefined);
+      }));
+    }
+    console.log(`[results-delete] ${authResult.user.email} đã xóa ${ids.length} kết quả thi`);
+    return res.json({ success: true, deleted: ids.length });
+  }));
+
   // Xem lại chi tiết một bài thi: đề như học sinh đã làm + bài làm + đáp án đúng. Giáo viên xem mọi bài, học sinh chỉ xem bài của mình.
   app.get('/api/exams/results/:id/review', wrapAsync(async (req, res) => {
     const authResult = await verifyFirebaseToken(req.headers.authorization);

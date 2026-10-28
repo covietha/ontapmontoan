@@ -52,6 +52,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
     examResults,
     students,
     classrooms,
+    deleteExamResults,
     verifyContent, 
     addLesson, 
     addQuestion, 
@@ -94,6 +95,10 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
   // Results subtab state
   const [resultSearch, setResultSearch] = useState<string>('');
   const [resultScoreFilter, setResultScoreFilter] = useState<'all' | 'high' | 'mid' | 'low'>('all');
+  const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
+  const [confirmDeleteResults, setConfirmDeleteResults] = useState(false);
+  const [deletingResults, setDeletingResults] = useState(false);
+  const [resultsNotice, setResultsNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [resultClass, setResultClass] = useState<string>('all');
   const [resultExam, setResultExam] = useState<string>('all');
   const [resultSort, setResultSort] = useState<'newest' | 'class' | 'score_desc' | 'score_asc'>('newest');
@@ -811,6 +816,47 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
             </div>
           )}
 
+          {isRootAdmin && examResults.length > 0 && (
+            <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-3 text-sm">
+              <label className="inline-flex items-center gap-2 min-h-10 font-semibold text-slate-800 cursor-pointer">
+                <input type="checkbox" className="w-5 h-5"
+                  checked={resultRows.length > 0 && resultRows.every(x => selectedResultIds.includes(x.r.id))}
+                  onChange={(e) => setSelectedResultIds(e.target.checked ? resultRows.map(x => x.r.id) : [])} />
+                Chọn tất cả {resultRows.length} bài đang hiển thị
+              </label>
+              <span className="text-slate-600">Đã chọn: <strong>{selectedResultIds.length}</strong></span>
+              <button type="button" disabled={selectedResultIds.length === 0} onClick={() => setConfirmDeleteResults(true)}
+                className="ml-auto min-h-10 px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold disabled:opacity-40">
+                Xóa các bài đã chọn
+              </button>
+            </div>
+          )}
+          {resultsNotice && (
+            <div role={resultsNotice.type === 'err' ? 'alert' : 'status'} className={`px-4 py-3 rounded-xl text-sm font-semibold border ${resultsNotice.type === 'ok' ? 'bg-emerald-50 text-emerald-900 border-emerald-200' : 'bg-rose-50 text-rose-900 border-rose-200'}`}>{resultsNotice.text}</div>
+          )}
+          {confirmDeleteResults && (
+            <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="del-res-title">
+              <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                <h3 id="del-res-title" className="text-lg font-bold text-rose-800">Xóa {selectedResultIds.length} bài thi?</h3>
+                <p className="text-sm text-slate-700 leading-relaxed">Điểm và bài làm của các bài đã chọn sẽ bị xóa khỏi hệ thống, học sinh cũng không xem lại được. Việc này <strong>không khôi phục được</strong>. Thầy nên xuất bảng điểm trước nếu còn cần lưu.</p>
+                <div className="flex flex-col-reverse sm:flex-row gap-3">
+                  <button type="button" disabled={deletingResults} onClick={() => setConfirmDeleteResults(false)} className="flex-1 min-h-12 rounded-xl border border-slate-300 text-slate-800 font-bold text-sm">Hủy</button>
+                  <button type="button" disabled={deletingResults} className="flex-1 min-h-12 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-sm disabled:opacity-50"
+                    onClick={async () => {
+                      setDeletingResults(true);
+                      try {
+                        const n = await deleteExamResults(selectedResultIds);
+                        setResultsNotice({ type: 'ok', text: `Đã xóa ${n} bài thi.` });
+                        setSelectedResultIds([]);
+                      } catch (e: any) {
+                        setResultsNotice({ type: 'err', text: e.message || 'Không xóa được.' });
+                      } finally { setDeletingResults(false); setConfirmDeleteResults(false); }
+                    }}>{deletingResults ? 'Đang xóa…' : 'Xóa vĩnh viễn'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Results Table */}
           {examResults.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 text-slate-400 text-xs">
@@ -822,6 +868,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                     <tr>
+                      {isRootAdmin && <th className="py-3 px-4 w-10"><span className="sr-only">Chọn</span></th>}
                       <th className="py-3 px-4">Học sinh</th>
                       <th className="py-3 px-4">Lớp</th>
                       <th className="py-3 px-4">Tên đề thi</th>
@@ -836,6 +883,13 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {resultRows.map(({ r: res, name, code, cls }) => (
                         <tr key={res.id} className="hover:bg-slate-50/70 transition-colors">
+                          {isRootAdmin && (
+                            <td className="py-3 px-4">
+                              <input type="checkbox" className="w-5 h-5" aria-label={`Chọn bài của ${name || res.studentEmail}`}
+                                checked={selectedResultIds.includes(res.id)}
+                                onChange={(e) => setSelectedResultIds(prev => e.target.checked ? [...prev, res.id] : prev.filter(x => x !== res.id))} />
+                            </td>
+                          )}
                           <td className="py-3 px-4 font-semibold text-slate-900">
                             <div className="text-sm">{name || 'Tài khoản đã xóa hoặc chưa tải danh sách'}</div>
                             <div className="text-xs text-slate-600 font-mono">{code || res.studentEmail}</div>
@@ -875,7 +929,7 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ initialSub
                         </tr>
                     ))}
                     {resultRows.length === 0 && (
-                      <tr><td colSpan={9} className="py-8 text-center text-sm text-slate-600">Không có bài nộp nào khớp với bộ lọc. Thầy, cô đổi lớp, đề thi hoặc mức điểm để xem thêm.</td></tr>
+                      <tr><td colSpan={10} className="py-8 text-center text-sm text-slate-600">Không có bài nộp nào khớp với bộ lọc. Thầy, cô đổi lớp, đề thi hoặc mức điểm để xem thêm.</td></tr>
                     )}
                   </tbody>
                 </table>

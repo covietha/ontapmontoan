@@ -45,6 +45,8 @@ interface DataContextType {
   saveClassInfo: (cls: Classroom) => Promise<void>;
   /** Xóa lớp và toàn bộ tài khoản học sinh của lớp; trả về số học sinh đã xóa. */
   deleteClassroom: (code: string) => Promise<number>;
+  /** Quản trị viên xóa kết quả thi trên máy chủ; trả về số bài đã xóa. */
+  deleteExamResults: (ids: string[]) => Promise<number>;
   teacherOptions: { id: string; displayName: string }[];
   allOfficialExams: Exam[];
   hiddenOfficialIds: string[];
@@ -234,6 +236,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (res.ok) {
           const serverData = await res.json();
           if (Array.isArray(serverData)) {
+            // Giáo viên: máy chủ là nguồn đúng duy nhất (kết quả đã bị quản trị viên xóa không được hiện lại từ bộ nhớ máy)
+            if (isTeacher) {
+              setExamResults(serverData.map((raw: any) => ({ ...raw, completedAt: raw.completedAt || raw.gradedAt } as ExamResult)));
+              return;
+            }
             setExamResults(prev => {
               const ids = new Set(prev.map(r => r.id));
               const merged = [...prev];
@@ -256,7 +263,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (profile?.uid) {
       syncServerResults();
     }
-  }, [profile?.uid, getIdToken]);
+  }, [profile?.uid, isTeacher, getIdToken]);
 
   // Chuyên đề, bài học giáo viên đã thêm/sửa/xóa trên máy chủ: ghép lên dữ liệu mẫu, dùng chung cho mọi máy
   const [curriculum, setCurriculum] = useState<{ topics: Topic[]; lessons: Lesson[]; deletedTopicIds: string[]; deletedLessonIds: string[] }>(
@@ -387,6 +394,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
     setClassInfo(prev => ({ ...prev, [cls.code]: data }));
     setClassrooms(prev => prev.map(c => (c.code === cls.code ? { ...c, ...cls, updatedAt: new Date().toISOString() } : c)));
+  };
+
+  const deleteExamResults = async (ids: string[]): Promise<number> => {
+    const token = await getIdToken();
+    const res = await fetch('/api/exams/results/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Máy chủ trả lỗi ${res.status}`);
+    const gone = new Set(ids);
+    setExamResults(prev => prev.filter(r => !gone.has(r.id)));
+    return data.deleted ?? ids.length;
   };
 
   const deleteClassroom = async (code: string): Promise<number> => {
@@ -923,6 +944,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshRoster,
         saveClassInfo,
         deleteClassroom,
+        deleteExamResults,
         teacherOptions,
         saveTopic,
         saveLesson,
